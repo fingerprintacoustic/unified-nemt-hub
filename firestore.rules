@@ -1,0 +1,253 @@
+rules_version = '2';
+
+// Unified NEMT Operations Hub
+// -----------------------------------------------------------------------------
+// Security model:
+//  - Every document belongs to an organization via `organizationId`.
+//  - Authoritative identity/role/org/status source is the Firestore
+//    `users/{uid}` document (NOT Firebase Auth custom claims). The
+//    application's client and service code (src/context/AuthContext.tsx,
+//    src/services/users.ts) reads role and organization exclusively from
+//    this document, so these rules mirror that model rather than inventing
+//    a custom-claims mechanism the app does not provision.
+//  - Access is: authenticated + user doc exists + status == 'ACTIVE'
+//    + role allowed + same organization.
+//  - Server-side enforcement only -- the frontend never decides authorization
+//    alone.
+//  - Deny by default: the final catch-all match denies anything not
+//    explicitly allowed above it.
+//  - User/organization document creation is not granted broadly to
+//    authenticated clients. The application's own comments (see
+//    src/services/users.ts) state that user records are intended to be
+//    written by a trusted server-side path (e.g. a Cloud Function using the
+//    Admin SDK) after verification. No such Cloud Function exists yet in
+//    this repository, and no client code creates `organizations` documents
+//    at all. Rather than inventing that missing server-side provisioning
+//    flow (out of scope for foundation hardening), these rules restrict
+//    `organizations` writes entirely and `users` creation to existing staff
+//    of the SAME org, leaving initial org/first-admin bootstrap as a known
+//    gap to be solved with a trusted server path in a later phase.
+// -----------------------------------------------------------------------------
+
+function signedIn() {
+  return request.auth != null;
+}
+
+function userDoc(uid) {
+  return get(/databases/$(database)/documents/users/$(uid));
+}
+
+function userDocExists(uid) {
+  return exists(/databases/$(database)/documents/users/$(uid));
+}
+
+// True only for a signed-in caller whose OWN users/{uid} doc exists and has
+// status == 'ACTIVE'. This is the base gate for every other role check, so an
+// inactive (DISABLED/PENDING) or unprovisioned user is denied everywhere.
+function isActiveUser() {
+  return signedIn()
+    && userDocExists(request.auth.uid)
+    && userDoc(request.auth.uid).data.status == 'ACTIVE';
+}
+
+function callerRole() {
+  return userDoc(request.auth.uid).data.role;
+}
+
+function callerOrgId() {
+  return userDoc(request.auth.uid).data.organizationId;
+}
+
+function isAdmin() {
+  return isActiveUser() && callerRole() == 'ADMIN';
+}
+
+function isManagerOrAbove() {
+  return isActiveUser() && callerRole() in ['ADMIN', 'MANAGER'];
+}
+
+function isStaff() {
+  return isActiveUser() && callerRole() in ['ADMIN', 'MANAGER', 'DISPATCHER'];
+}
+
+function isDriver() {
+  return isActiveUser() && callerRole() == 'DRIVER';
+}
+
+// Compares a document's organizationId field to the caller's own org.
+function sameOrg(orgId) {
+  return isActiveUser() && orgId == callerOrgId();
+}
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Organizations -- read limited to members of that org. No client
+    // creation/update/delete is granted: see header comment. First-org and
+    // first-admin provisioning is a known gap for a trusted server path in
+    // a later phase, not solved here.
+    match /organizations/{orgId} {
+      allow read: if sameOrg(orgId);
+      allow create, update, delete: if false;
+    }
+
+    // Users -- a user may always read their own record. Staff may read any
+    // user record in their own organization. Drivers may only read their
+    // own record (not other users).
+    //
+    // Creation: only existing staff may create a user document, and only
+    // within their own organization, matching the app's onboarding/admin
+    // use case (src/services/users.ts upsertUserRecord). There is no
+    // self-service sign-up flow in the current application.
+    //
+    // Update: a user may update their OWN record only if they do not
+    // change their own role or organizationId (no self-escalation, no
+    // self-org-change). Staff may update other users' records within their
+    // own organization; only an ADMIN may change another user's role, and
+    // no one may move a user to a different organization via update.
+    //
+    // Delete: ADMIN only, within their own organization.
+    match /users/{userId} {
+      allow read: if isActiveUser()
+        && (userId == request.auth.uid || (isStaff() && sameOrg(resource.data.organizationId)));
+
+      allow create: if isStaff()
+        && sameOrg(request.resource.data.organizationId)
+        && request.resource.data.uid == userId;
+
+      allow update: if isActiveUser() && sameOrg(resource.data.organizationId) && (
+        (
+          // Self-update: role and organization must stay the same.
+          userId == request.auth.uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.organizationId == resource.data.organizationId
+        ) || (
+          // Staff managing another user in the same org.
+          isStaff()
+          && userId != request.auth.uid
+          && sameOrg(request.resource.data.organizationId)
+          && request.resource.data.organizationId == resource.data.organizationId
+          && (request.resource.data.role == resource.data.role || isAdmin())
+        )
+      );
+
+      allow delete: if isAdmin() && sameOrg(resource.data.organizationId);
+    }
+
+    // Drivers -- staff manage drivers in their org. A driver may read their
+    // own linked driver record (DriverRecord.userId == caller uid).
+    match /drivers/{driverId} {
+      allow read: if isActiveUser() && (
+        (isStaff() && sameOrg(resource.data.organizationId))
+        || (isDriver() && resource.data.userId == request.auth.uid)
+      );
+      allow create: if isStaff() && sameOrg(request.resource.data.organizationId);
+      allow update, delete: if isStaff()
+        && sameOrg(resource.data.organizationId)
+        && sameOrg(request.resource.data.organizationId);
+    }
+
+    // Vehicles -- staff manage; any active org member (including drivers)
+    // may read vehicle records in their own org, since drivers need to see
+    // vehicle info for assigned trips/inspections.
+    match /vehicles/{vehicleId} {
+      allow read: if sameOrg(resource.data.organizationId);
+      allow create: if isStaff() && sameOrg(request.resource.data.organizationId);
+      allow update, delete: if isStaff()
+        && sameOrg(resource.data.organizationId)
+        && sameOrg(request.resource.data.organizationId);
+    }
+
+    // Trips -- staff manage all org trips. A driver may read/update only
+    // trips assigned to them (TripRecord.driverId), and may not reassign a
+    // trip to a different driver, vehicle, or organization via update.
+    match /trips/{tripId} {
+      allow read: if isActiveUser() && (
+        (isStaff() && sameOrg(resource.data.organizationId))
+        || (isDriver() && resource.data.driverId == request.auth.uid)
+      );
+
+      allow create: if isStaff() && sameOrg(request.resource.data.organizationId);
+
+      allow update: if isActiveUser() && (
+        (
+          isStaff()
+          && sameOrg(resource.data.organizationId)
+          && sameOrg(request.resource.data.organizationId)
+        ) || (
+          isDriver()
+          && resource.data.driverId == request.auth.uid
+          && request.resource.data.driverId == resource.data.driverId
+          && request.resource.data.organizationId == resource.data.organizationId
+          && request.resource.data.vehicleId == resource.data.vehicleId
+        )
+      );
+
+      allow delete: if isStaff() && sameOrg(resource.data.organizationId);
+    }
+
+    // Inspections -- staff manage all org inspections. A driver may create
+    // an inspection for themself (InspectionRecord.driverId == caller uid);
+    // if a tripId is supplied, the referenced trip must also be assigned to
+    // that same driver. Drivers may update/delete only their own
+    // inspections; staff may manage any inspection in their org.
+    match /inspections/{inspectionId} {
+      allow read: if isActiveUser() && (
+        (isStaff() && sameOrg(resource.data.organizationId))
+        || (isDriver() && resource.data.driverId == request.auth.uid)
+      );
+
+      allow create: if sameOrg(request.resource.data.organizationId) && (
+        isStaff()
+        || (
+          isDriver()
+          && request.resource.data.driverId == request.auth.uid
+          && (
+            !('tripId' in request.resource.data)
+            || request.resource.data.tripId == null
+            || get(/databases/$(database)/documents/trips/$(request.resource.data.tripId)).data.driverId == request.auth.uid
+          )
+        )
+      );
+
+      allow update, delete: if isActiveUser() && (
+        (isStaff() && sameOrg(resource.data.organizationId))
+        || (isDriver() && resource.data.driverId == request.auth.uid)
+      );
+    }
+
+    // Locations -- staff manage org locations; any active org member may
+    // read and create (e.g. driver check-in), matching the original
+    // handoff's intent. Only staff may update/delete.
+    match /locations/{locationId} {
+      allow read: if sameOrg(resource.data.organizationId);
+      allow create: if sameOrg(request.resource.data.organizationId);
+      allow update, delete: if isStaff()
+        && sameOrg(resource.data.organizationId)
+        && sameOrg(request.resource.data.organizationId);
+    }
+
+    // Audit logs -- staff may read their org's audit trail. Writes are
+    // intentionally restricted: create requires the same
+    // organization/actor/timestamp integrity checks as before (matching
+    // src/services/audit.ts), and update/delete are never permitted from a
+    // client -- audit records must be immutable once written.
+    match /auditLogs/{logId} {
+      allow read: if isStaff() && sameOrg(resource.data.organizationId);
+      allow create: if isActiveUser()
+        && sameOrg(request.resource.data.organizationId)
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.actorRole == callerRole()
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.diff(request.resource.data).keys().hasOnly(
+          ['action', 'actorId', 'actorRole', 'organizationId', 'targetCollection', 'targetId', 'details', 'createdAt']
+        );
+      allow update, delete: if false;
+    }
+
+    // Deny by default: anything not explicitly matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

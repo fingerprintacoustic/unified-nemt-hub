@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/*
+ * Unified NEMT Operations Hub — global base styles.
+ * Professional fleet/NEMT interface: clean, high-contrast, accessible..
+ */
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900;
+    font-family:
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      'Helvetica Neue',
+      Arial,
+      sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold text-slate-900;
+  }
+}
+
+/* Larger, readable touch targets for driver workflows */
+@media (pointer: coarse) {
+  .driver-tap-target {
+    @apply min-h-14;
+  }
+}

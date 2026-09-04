@@ -1,0 +1,92 @@
+rules_version = '2';
+
+// Unified NEMT Operations Hub -- Cloud Storage security rules.
+// -----------------------------------------------------------------------------
+// Objects are stored under an organization-scoped prefix:
+//    /inspections/{orgId}/{inspectionId}/{asset}
+//    /driver-pwa/{orgId}/{uid}/{kind}/{asset}
+//
+// Authorization model matches firestore.rules exactly: identity, role,
+// organization membership, and active status are all read from the
+// Firestore `users/{uid}` document via the `firestore.get()` /
+// `firestore.exists()` bridge functions available to Storage rules -- NOT
+// from Firebase Auth custom claims. The application does not provision any
+// custom claims, so relying on `request.auth.token.role` (as the previous
+// version of this file did) would always evaluate to an undefined/empty
+// value and either break access entirely or (worse) be silently bypassed
+// depending on how a check was written. This version removes that
+// assumption entirely.
+// -----------------------------------------------------------------------------
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDocExists(uid) {
+      return firestore.exists(/databases/(default)/documents/users/$(uid));
+    }
+
+    function userDoc(uid) {
+      return firestore.get(/databases/(default)/documents/users/$(uid));
+    }
+
+    function isActiveUser() {
+      return signedIn()
+        && userDocExists(request.auth.uid)
+        && userDoc(request.auth.uid).data.status == 'ACTIVE';
+    }
+
+    function callerRole() {
+      return userDoc(request.auth.uid).data.role;
+    }
+
+    function callerOrgId() {
+      return userDoc(request.auth.uid).data.organizationId;
+    }
+
+    function isStaff() {
+      return isActiveUser() && callerRole() in ['ADMIN', 'MANAGER', 'DISPATCHER'];
+    }
+
+    function isDriver() {
+      return isActiveUser() && callerRole() == 'DRIVER';
+    }
+
+    function sameOrg(orgId) {
+      return isActiveUser() && orgId == callerOrgId();
+    }
+
+    function isReasonableMediaUpload() {
+      // Mirrors src/services/storage.ts MAX_INSPECTION_MEDIA_BYTES and only
+      // accepts the image/video types the inspection-media flow captures.
+      return request.resource.size < 15 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*')
+            || request.resource.contentType.matches('video/.*'));
+    }
+
+    // Inspection media -- staff may read any org inspection's media. A
+    // driver may read/write only under their own org. Writes (create or
+    // overwrite) require staff or driver role, org match, and the file-type
+    // /size restriction above.
+    match /inspections/{orgId}/{inspectionId}/{fileName} {
+      allow read: if sameOrg(orgId);
+      allow write: if sameOrg(orgId) && (isStaff() || isDriver()) && isReasonableMediaUpload();
+    }
+
+    // Driver PWA media -- a driver may read/write only their own uid's
+    // folder within their own org. Staff may read (not write) any driver's
+    // folder in their org for review purposes.
+    match /driver-pwa/{orgId}/{uid}/{allPaths=**} {
+      allow read: if sameOrg(orgId) && (isStaff() || (isDriver() && uid == request.auth.uid));
+      allow write: if sameOrg(orgId) && isDriver() && uid == request.auth.uid && isReasonableMediaUpload();
+    }
+
+    // Deny by default: anything not explicitly matched above is denied.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
