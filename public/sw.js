@@ -36,7 +36,7 @@ self.addEventListener('fetch', (event) => {
   // Network-first for HTML/navigation requests so signed-in content stays fresh..
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match(request).then((cached) => cached ?? caches.match('/'),
+      fetch(request).catch(() => caches.match(request).then((cached) => cached ?? caches.match('/'))),
     )
     return
   }
