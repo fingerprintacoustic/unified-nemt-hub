@@ -1,0 +1,13 @@
+{
+  "name": "nemt-hub-scripts",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Local-only operational scripts for the Unified NEMT Operations Hub. Not part of the app: separate dependency tree, never bundled or deployed.",
+  "scripts": {
+    "seed-organization": "node seed-organization.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}
