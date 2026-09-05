@@ -28,8 +28,10 @@ dist-ssr
 .env.*
 !.env.example
 
-# Service-account keys for scripts/ — local only, never commit
+# Service-account keys / local secrets — never commit
 serviceAccount*.json
 *-service-account.json
 *.serviceaccount.json
+*-firebase-adminsdk-*.json
+secrets/
 scripts/secrets/
