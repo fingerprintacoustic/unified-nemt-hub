@@ -68,7 +68,8 @@ unconfigured.
   `diff(self)` no-op on the `auditLogs` key check (line ~242) that makes
   that key whitelist ineffective (does not grant extra access).
 - No self-service password reset / profile update flow in the app.
-  `scripts/set-user-password.mjs` exists as a dev-only helper (uncommitted).
+  `scripts/set-user-password.mjs` is a dev-only helper (committed) for
+  putting a known password on a freshly-seeded test account.
 - `docs/fix-readme-code-fence` (`2d2b70c`) pushed, not yet merged to `main`.
 - `AuthContext` still hardcodes `organization = null`; `/organizations/{orgId}`
   is not yet loaded on sign-in (login test confirmed the user doc + role
