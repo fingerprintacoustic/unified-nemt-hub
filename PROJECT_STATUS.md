@@ -31,38 +31,59 @@ service-worker syntax fix, and local-preview shell access when Firebase is
 unconfigured.
 
 ### Phase 2 — Auth / orgs / roles: PARTIAL
-Done:
-- Email/password login flow.
+
+**CONFIRMED WORKING against a real Firebase project (`nemt-hub-dev`):**
+- Email/password login flow — in-app login test passed: signed in as the
+  seeded ADMIN, correct organization resolved, ADMIN nav visible, no
+  permission-denied.
 - Role model (ADMIN > MANAGER > DISPATCHER > DRIVER) enforced in the app
   (`ProtectedRoute`, nav gating) and in `firestore.rules`.
 - Organization scoping enforced in `firestore.rules` (every collection).
-- First-org / first-admin bootstrap seed script written — `scripts/seed-organization.mjs`,
-  commit `3662dee`.
+- `firestore.rules` deployed to `nemt-hub-dev`. Helper-function scope bug
+  fixed (commit `1a2bdaa` — `$(database)` now resolves) and verified with an
+  authenticated-client check (`scripts/verify-rules-client.mjs`).
+- First-org / first-admin bootstrap seed script (`scripts/seed-organization.mjs`,
+  commit `3662dee`) — run end-to-end against `nemt-hub-dev`: created
+  `organizations/vDaohHxTqECFmLVGBr4T` + admin user
+  `Py86U5SSX7WMtuSUOw41xusHueg1`. Doc shapes verified
+  (`scripts/verify-seed.mjs`, 33/33). Re-run confirmed idempotent (no
+  duplicates, no overwrites). Verification scripts committed in `d43a934`.
 
-Not done:
-- No admin UI to manage users (invite / list / change role / deactivate).
+**NOT done:**
+- No admin UI to manage users (list / invite / change role / deactivate).
   `src/pages/settings/SettingsPage.tsx` is still a placeholder.
-- Seed script has not been run against a real Firebase project (no `.env`
-  with real credentials yet).
+  **Part B plan is approved (dedicated `/users` page, MANAGER+); not built.**
 
 ### Phases 3–12: NOT STARTED
 
 ## Open decisions / known gaps
 
-- Seed script (`scripts/seed-organization.mjs`) is untested end-to-end —
-  needs one real run against a Firebase project (or the emulators).
-- No self-service password reset or profile update flow in the app; the
-  seed script only prints a password-reset link for the first admin.
-- No admin user-management UI (see Phase 2 "not done").
-- `docs/fix-readme-code-fence` (`2d2b70c`) is pushed but not yet merged to
-  `main` — a one-line README fence fix, safe to merge anytime.
-- `AuthContext` still hardcodes `organization = null`; the
-  `/organizations/{orgId}` record is not yet loaded on sign-in.
+- **Users admin screen (Phase 2 Part B): plan approved, NOT STARTED.**
+  Dedicated `/users` route at `minRole: MANAGER`; list + change-role
+  (ADMIN only) + activate/deactivate; new-user creation still needs a
+  trusted server path (leaning: `scripts/create-user.mjs`, extending the
+  seed-script pattern). No email/invite delivery wired.
+- `firestore.rules` still emits 2 pre-existing compiler warnings, both
+  unrelated to the scope fix: unused `isManagerOrAbove`, and a
+  `diff(self)` no-op on the `auditLogs` key check (line ~242) that makes
+  that key whitelist ineffective (does not grant extra access).
+- No self-service password reset / profile update flow in the app.
+  `scripts/set-user-password.mjs` exists as a dev-only helper (uncommitted).
+- `docs/fix-readme-code-fence` (`2d2b70c`) pushed, not yet merged to `main`.
+- `AuthContext` still hardcodes `organization = null`; `/organizations/{orgId}`
+  is not yet loaded on sign-in (login test confirmed the user doc + role
+  resolve; the org record itself is not surfaced in context yet).
+
+## Test data (nemt-hub-dev)
+
+- Org: `organizations/vDaohHxTqECFmLVGBr4T` — "Test Org (seed check)"
+- Admin: `users/Py86U5SSX7WMtuSUOw41xusHueg1` /
+  `fingerprintacoustic+nemt-dev-admin@gmail.com` (ADMIN, ACTIVE)
 
 ## Last worked on / next step
 
-- **Last:** wrote the first-org bootstrap seed script (`3662dee`) and the
-  local-preview shell guard (`d2308db`); added this status tracker.
-- **Next:** decide the onboarding trigger for running the seed script, then
-  run it once against a real Firebase project to create the first org +
-  admin. After that, Phase 2's admin user-management UI.
+- **Last:** confirmed Part A end-to-end — seed script + deployed rules work
+  against `nemt-hub-dev`, in-app ADMIN login passed. Committed the rules
+  scope fix (`1a2bdaa`) and verification scripts (`d43a934`).
+- **Next:** build the Users admin screen (Phase 2 Part B) per the approved
+  plan. Then Phase 2 is complete and Phase 3 (Vehicles/drivers) can start.
