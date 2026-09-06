@@ -29,58 +29,58 @@ rules_version = '2';
 //    gap to be solved with a trusted server path in a later phase.
 // -----------------------------------------------------------------------------
 
-function signedIn() {
-  return request.auth != null;
-}
-
-function userDoc(uid) {
-  return get(/databases/$(database)/documents/users/$(uid));
-}
-
-function userDocExists(uid) {
-  return exists(/databases/$(database)/documents/users/$(uid));
-}
-
-// True only for a signed-in caller whose OWN users/{uid} doc exists and has
-// status == 'ACTIVE'. This is the base gate for every other role check, so an
-// inactive (DISABLED/PENDING) or unprovisioned user is denied everywhere.
-function isActiveUser() {
-  return signedIn()
-    && userDocExists(request.auth.uid)
-    && userDoc(request.auth.uid).data.status == 'ACTIVE';
-}
-
-function callerRole() {
-  return userDoc(request.auth.uid).data.role;
-}
-
-function callerOrgId() {
-  return userDoc(request.auth.uid).data.organizationId;
-}
-
-function isAdmin() {
-  return isActiveUser() && callerRole() == 'ADMIN';
-}
-
-function isManagerOrAbove() {
-  return isActiveUser() && callerRole() in ['ADMIN', 'MANAGER'];
-}
-
-function isStaff() {
-  return isActiveUser() && callerRole() in ['ADMIN', 'MANAGER', 'DISPATCHER'];
-}
-
-function isDriver() {
-  return isActiveUser() && callerRole() == 'DRIVER';
-}
-
-// Compares a document's organizationId field to the caller's own org.
-function sameOrg(orgId) {
-  return isActiveUser() && orgId == callerOrgId();
-}
-
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function userDocExists(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid));
+    }
+
+    // True only for a signed-in caller whose OWN users/{uid} doc exists and has
+    // status == 'ACTIVE'. This is the base gate for every other role check, so an
+    // inactive (DISABLED/PENDING) or unprovisioned user is denied everywhere.
+    function isActiveUser() {
+      return signedIn()
+        && userDocExists(request.auth.uid)
+        && userDoc(request.auth.uid).data.status == 'ACTIVE';
+    }
+
+    function callerRole() {
+      return userDoc(request.auth.uid).data.role;
+    }
+
+    function callerOrgId() {
+      return userDoc(request.auth.uid).data.organizationId;
+    }
+
+    function isAdmin() {
+      return isActiveUser() && callerRole() == 'ADMIN';
+    }
+
+    function isManagerOrAbove() {
+      return isActiveUser() && callerRole() in ['ADMIN', 'MANAGER'];
+    }
+
+    function isStaff() {
+      return isActiveUser() && callerRole() in ['ADMIN', 'MANAGER', 'DISPATCHER'];
+    }
+
+    function isDriver() {
+      return isActiveUser() && callerRole() == 'DRIVER';
+    }
+
+    // Compares a document's organizationId field to the caller's own org.
+    function sameOrg(orgId) {
+      return isActiveUser() && orgId == callerOrgId();
+    }
 
     // Organizations -- read limited to members of that org. No client
     // creation/update/delete is granted: see header comment. First-org and
