@@ -11,7 +11,7 @@ import {
   type QuerySnapshot,
 } from 'firebase/firestore'
 import { getFirestore } from '../lib/firebase'
-import type { VehicleRecord, VehicleStatus } from '../types'
+import type { Timestamp, VehicleRecord, VehicleStatus } from '../types'
 
 const VEHICLES_COLLECTION = 'vehicles'
 
@@ -72,6 +72,17 @@ export async function updateVehicle(vehicleId: string, patch: VehiclePatch): Pro
 
 export async function setVehicleStatus(vehicleId: string, status: VehicleStatus): Promise<void> {
   await updateDoc(vehicleDocRef(vehicleId), { status, updatedAt: serverTimestamp() })
+}
+
+/**
+ * Records when a vehicle was last inspected. Deliberately its own function
+ * rather than part of VehiclePatch -- only the Inspections review flow
+ * (staff approving an inspection) should set this, not the vehicle edit
+ * form, and firestore.rules only allows staff to write vehicles at all
+ * (a driver submitting an inspection can't bump this themself).
+ */
+export async function setVehicleLastInspection(vehicleId: string, occurredAt: Timestamp): Promise<void> {
+  await updateDoc(vehicleDocRef(vehicleId), { lastInspectionAt: occurredAt, updatedAt: serverTimestamp() })
 }
 
 export async function deleteVehicle(vehicleId: string): Promise<void> {
