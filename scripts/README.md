@@ -136,3 +136,59 @@ node seed-organization.mjs --project demo-nemt-hub \
   --org-name "Test Org" --org-timezone "America/New_York" \
   --admin-email "admin@test.example" --admin-first-name "Test" --admin-last-name "Admin"
 ```
+
+## create-user.mjs — add a user to an existing organization
+
+The Users admin screen (`src/pages/users/UsersPage.tsx`) can list an org's
+users and change an existing user's role/status — those are plain Firestore
+updates the deployed rules already allow. It cannot **create** a new user,
+because a browser can't create a Firebase Auth account for someone else
+without signing the admin out and into that new account. `create-user.mjs`
+is the trusted server-side path for that one step; the Users screen shows the
+exact command to run, pre-filled with your organization's id.
+
+Unlike `seed-organization.mjs`, this script does **not** create an
+organization — `--org-id` must already exist (it aborts otherwise). Use
+`seed-organization.mjs` for a brand-new customer's first org + admin.
+
+```
+cd scripts
+node create-user.mjs \
+  --org-id <existing orgId> \
+  --email "sam@acme.example" \
+  --first-name "Sam" \
+  --last-name "Rivera" \
+  --role DISPATCHER \
+  --dry-run
+```
+
+Review, then re-run without `--dry-run`. Same credentials setup as
+`seed-organization.mjs` above.
+
+| Flag | Required | Notes |
+| --- | --- | --- |
+| `--org-id` | yes | Must already exist |
+| `--email` | yes | Auth email + `users.email` |
+| `--first-name` / `--last-name` | yes | `users.firstName` / `users.lastName` |
+| `--role` | yes | One of `ADMIN`, `MANAGER`, `DISPATCHER`, `DRIVER` |
+| `--phone` | no | `users.phone` |
+| `--existing-uid` | no | Reuse an existing Firebase Auth user instead of email lookup/creation |
+| `--credentials` / `--project` / `--dry-run` / `--help` | no | Same as `seed-organization.mjs` |
+
+Idempotent the same way: existing Auth user reused by email/uid; an existing
+`users/{uid}` doc that already matches (org, role, `ACTIVE`) is a no-op;
+one that exists with *different* data aborts rather than being overwritten —
+change an existing user's role/status from the Users admin screen instead.
+
+## Other scripts
+
+- **`verify-seed.mjs`** — read-only check that a seeded org + user match the
+  expected `OrganizationRecord`/`UserRecord` shape: `node verify-seed.mjs --org-id <id> --uid <uid>`.
+- **`verify-rules-client.mjs`** — authenticated-**client** check of the
+  deployed `firestore.rules` (signs in as a given uid via a custom token, then
+  hits the Firestore REST API), since the Admin SDK bypasses rules and can't
+  verify them: `node verify-rules-client.mjs --uid <uid> --org-id <id>`.
+- **`set-user-password.mjs`** — dev-only helper that sets a known password on
+  a test account via the Admin SDK (prompts interactively, hidden input) —
+  useful right after `seed-organization.mjs`/`create-user.mjs`, which leave
+  new accounts with no password: `node set-user-password.mjs --uid <uid>`.
