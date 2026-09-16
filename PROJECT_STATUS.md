@@ -13,8 +13,8 @@ _Last updated: 2026-09-16_
 | 1 | Foundation | **DONE** |
 | 2 | Auth / orgs / roles | **DONE** |
 | 3 | Vehicles / drivers | **DONE** |
-| 4 | Trips / dispatch | **DONE** (staff side only) |
-| 5 | Driver PWA | NOT STARTED |
+| 4 | Trips / dispatch | **DONE** |
+| 5 | Driver PWA | **DONE** (trips tab; Inspections tab is Phase 6) |
 | 6 | Inspections | NOT STARTED |
 | 7 | Navigation / comms | NOT STARTED |
 | 8 | Telematics | NOT STARTED |
@@ -105,15 +105,44 @@ unconfigured.
   configured yet): create with a real `GeoPoint` written, Dispatch
   assign/unassign (confirmed `deleteField()` actually removes the fields,
   not just blanks them), status change, edit, delete.
-- **Not built (explicitly out of scope, belongs to Phase 5 Driver PWA):**
-  a driver's own view of trips assigned to them, or the
-  EN_ROUTE→PICKED_UP→DROPPED_OFF progression a driver would do themselves.
-  `firestore.rules` already supports it (a driver may update a trip
-  assigned to them, but not reassign driver/vehicle/org) — just no UI yet.
 - **Not built:** automatic distance/duration calculation (would need a
   separate Distance Matrix–type API call — not requested, not added).
+- **Bug found and fixed while scoping Phase 5, see below:** the driver
+  assignment dropdowns on this page and Dispatch were storing the wrong
+  value in `TripRecord.driverId`.
 
-### Phases 5–12: NOT STARTED
+### Phase 5 — Driver PWA: DONE (trips tab; Inspections tab is Phase 6)
+
+- **Fixed a real bug from this Phase 4 work** (`710cd30`): `firestore.rules`
+  compares a trip's `driverId` directly to `request.auth.uid` for a driver's
+  own-trip access, but `TripsPage`/`DispatchPage` were storing
+  `DriverRecord.driverId` (that record's own Firestore doc id) instead of
+  `DriverRecord.userId` (the linked login's Auth uid) — two unrelated ID
+  namespaces. Any trip assigned via Phase 4's UI would have been permanently
+  invisible to the actual driver. Caught this because Phase 4's own
+  verification only ran as ADMIN, which bypasses the `isDriver()` branch
+  entirely. No production data was affected (no real driver had been
+  assigned a trip yet). Fixed in both pages; the assignment dropdowns now
+  also filter to drivers who have a linked login, with a note when some
+  don't.
+- `src/pages/driver/DriverHomePage.tsx`: the driver's own live trip list
+  (`src/services/trips.ts` `observeMyTrips`), each trip as a card with a
+  single "next status" button (Start trip → Mark picked up → Mark dropped
+  off → Mark completed) via the existing `setTripStatus`. Dispatch-only
+  decisions (SCHEDULED→ASSIGNED, CANCELLED, NO_SHOW) aren't offered to
+  drivers. Completed/cancelled trips move to a compact history list.
+  `firestore.rules` needed no changes — a driver-authored partial update
+  that only touches `status` already satisfies the rule requiring
+  `driverId`/`vehicleId`/`organizationId` to stay unchanged.
+- **Verified as a real DRIVER-role account, not the admin bypass:** created
+  a driver+vehicle+trip as ADMIN, linked the driver's HR record to a
+  DRIVER-role login (the Users-page dropdown from Phase 3), assigned via
+  Dispatch, then signed in as that driver and progressed the trip
+  SCHEDULED→EN_ROUTE→PICKED_UP→DROPPED_OFF→COMPLETED end-to-end, confirmed
+  in Firestore at each step, watched it move to history on completion.
+- Inspections tab stays a placeholder — that's Phase 6.
+
+### Phases 6–12: NOT STARTED
 
 ## Open decisions / known gaps
 
@@ -151,9 +180,12 @@ unconfigured.
 
 ## Last worked on / next step
 
-- **Last:** built Trips and Dispatch (Phase 4, staff side), added a Google
-  Maps geocoding integration for trip addresses (key not yet configured —
-  manual lat/lng fallback verified working), extracted a shared `TextField`
-  component. All verified end-to-end in-browser.
-- **Next:** set the Google Maps API key when convenient. Then Phase 5 —
-  Driver PWA (includes the driver-side trip view/progression noted above).
+- **Last:** built the driver-facing trip view (Phase 5's trips tab), fixing
+  a real bug from Phase 4 along the way (trip `driverId` was storing the
+  wrong id and would have been invisible to real drivers — never actually
+  hit in production, since no driver had been assigned a trip yet).
+  Verified the full status-progression lifecycle as a real DRIVER-role
+  account.
+- **Next:** Phase 6 — Inspections (the Driver PWA's other tab, currently a
+  placeholder). Google Maps API key from Phase 4 is still unset whenever
+  convenient.
