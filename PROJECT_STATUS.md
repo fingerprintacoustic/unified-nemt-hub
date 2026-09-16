@@ -185,16 +185,13 @@ unconfigured.
   automation tool has no file-input capability) and GPS capture (no real
   device location) — both call pre-existing, already-reviewed helpers with
   no new logic of their own.
-- **Noticed, not fixed:** the Driver PWA layout (`DriverLayout.tsx`) has no
-  sign-out control at all — had to clear browser storage to switch test
-  accounts. Minor UX gap, easy fix, flagging for a deliberate decision on
-  where to put it rather than bolting it on mid-Phase-6.
+- **Sign-out gap noticed here, fixed later (`86692b3`):** `DriverLayout.tsx`
+  had no sign-out control at all. See "Last worked on" below.
 
 ### Phases 7–12: NOT STARTED
 
 ## Open decisions / known gaps
 
-- **`DriverLayout` has no sign-out button** — see Phase 6 note above.
 - **Google Maps key referrer list is dev-only.** Only `http://localhost:5173/*`
   is on the key's allowed-websites list right now (Phase 4 detail above).
   Add the production domain's referrer once one exists, or geocoding will
@@ -217,6 +214,14 @@ unconfigured.
 - This machine's Firebase CLI needed `firebase login:use musiiwajoseph@gmail.com`
   to reach `nemt-hub-dev` (that account owns it, not `fingerprintacoustic@gmail.com`).
   Set per-directory via `.firebaserc`/CLI default; no ownership changes made.
+- **Project relocated 2026-09-16**: moved from
+  `Downloads\unified-nemt-hub-ready-to-push\unified-nemt-hub` to
+  `StudioProjects\unified-nemt-hub` (alongside the user's other projects).
+  Git/build/service-account key all verified working at the new path. Note
+  for future sessions: the terminal (Bash/PowerShell) and the browser-preview
+  tool can end up pointed at different directories after a mid-session
+  move — confirm `preview_list`'s reported `cwd` matches before trusting a
+  browser-based verification.
 
 ## Test data (nemt-hub-dev)
 
@@ -228,11 +233,9 @@ unconfigured.
 
 ## Last worked on / next step
 
-- **Last:** set up and verified the Google Maps API key (Phase 4's
-  remaining item) — created on `nemt-hub-dev`, restricted to
-  Geocoding API + Maps JavaScript API and to `http://localhost:5173/*`,
-  billing already linked. Confirmed real addresses geocode correctly and
-  write real coordinates to trips.
-- **Next:** Phase 7 — Navigation / comms, or the Driver PWA sign-out
-  button first (small, noticed in Phase 6). Also remember to add the
+- **Last:** set up and verified the Google Maps API key, relocated the
+  project to `StudioProjects\unified-nemt-hub`, and added the missing
+  Driver PWA sign-out button (mirrors the staff Sidebar's logout pattern) —
+  verified with a real DRIVER-role account.
+- **Next:** Phase 7 — Navigation / comms. Also remember to add the
   production domain to the Maps key's referrer list once one exists.
