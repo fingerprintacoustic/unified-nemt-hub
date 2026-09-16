@@ -12,7 +12,7 @@ _Last updated: 2026-09-16_
 |---|---|---|
 | 1 | Foundation | **DONE** |
 | 2 | Auth / orgs / roles | **DONE** |
-| 3 | Vehicles / drivers | NOT STARTED ← next |
+| 3 | Vehicles / drivers | **PARTIAL** ← blocked on a rules bug, see below |
 | 4 | Trips / dispatch | NOT STARTED |
 | 5 | Driver PWA | NOT STARTED |
 | 6 | Inspections | NOT STARTED |
@@ -56,10 +56,37 @@ unconfigured.
   `seed-organization.mjs` for a new org) because a browser can't create a
   Firebase Auth account for someone else.
 
-### Phases 3–12: NOT STARTED
+### Phase 3 — Vehicles / drivers: PARTIAL
+
+- `src/pages/drivers/DriversPage.tsx` and `src/pages/vehicles/VehiclesPage.tsx`
+  replace the old placeholders: live list, add, edit, and status-change all
+  work and were verified in-browser against the deployed `nemt-hub-dev`
+  rules (`bb41329`).
+- **Delete does not work for either collection — confirmed via live testing,
+  not just reading the rules.** `firestore.rules`' `drivers` and `vehicles`
+  `allow update, delete` clauses both require
+  `sameOrg(request.resource.data.organizationId)`, but `request.resource` is
+  null on a delete, so the check always fails and every delete attempt gets
+  `permission-denied`. (`users`' delete rule does this correctly — it only
+  checks `resource.data`, not `request.resource.data`.) Not fixed — needs
+  the same kind of authorization the `$(database)` scope fix got before
+  touching `firestore.rules` again. UI already restricts Delete to ADMIN;
+  DISPATCHER/MANAGER only get the status dropdown either way.
+- Driver-to-login linking (`DriverRecord.userId`) is a manual dropdown of
+  existing DRIVER-role users — no auto-provisioning flow.
+- Not built: search/filter beyond the full list, and nothing from the old
+  placeholder copy that isn't in the schema (background checks, document
+  management, maintenance history) — see prior scoping message.
+
+### Phases 4–12: NOT STARTED
 
 ## Open decisions / known gaps
 
+- **`firestore.rules` delete bug (drivers/vehicles) — needs authorization to
+  fix.** See Phase 3 detail above. Likely fix: split `update` and `delete`
+  into separate `allow` statements so `delete` only checks
+  `resource.data.organizationId`, mirroring how `users`' delete rule is
+  already written.
 - No self-service password reset / profile update flow in the app (admin
   invite still ends with a printed reset link, delivered manually).
   `scripts/set-user-password.mjs` is a dev-only helper for setting a known
@@ -88,9 +115,9 @@ unconfigured.
 
 ## Last worked on / next step
 
-- **Last:** built and verified the Users admin screen (Phase 2 Part B) —
-  live list, role change, activate/deactivate, all exercised through the
-  real deployed rules in-browser. Added `scripts/create-user.mjs`. Phase 2
-  is now complete.
-- **Next:** start Phase 3 — Vehicles / drivers (currently placeholder pages
-  at `src/pages/vehicles/VehiclesPage.tsx` and `src/pages/drivers/DriversPage.tsx`).
+- **Last:** built Drivers and Vehicles CRUD screens (Phase 3) — list, add,
+  edit, and status-change verified end-to-end in-browser. Found and
+  confirmed (not fixed) a `firestore.rules` bug that blocks delete on both
+  collections.
+- **Next:** get authorization to fix the drivers/vehicles delete rule, then
+  Phase 3 is done. After that: Phase 4 — Trips / dispatch.
