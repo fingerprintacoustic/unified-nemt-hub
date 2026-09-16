@@ -225,13 +225,17 @@ service cloud.firestore {
 
     // Locations -- staff manage org locations; any active org member may
     // read and create (e.g. driver check-in), matching the original
-    // handoff's intent. Only staff may update/delete.
+    // handoff's intent. Only staff may update/delete. update/delete are
+    // split for the same reason as drivers/vehicles above (request.resource
+    // is null on delete, so a shared condition that reads
+    // request.resource.data would always fail for delete).
     match /locations/{locationId} {
       allow read: if sameOrg(resource.data.organizationId);
       allow create: if sameOrg(request.resource.data.organizationId);
-      allow update, delete: if isStaff()
+      allow update: if isStaff()
         && sameOrg(resource.data.organizationId)
         && sameOrg(request.resource.data.organizationId);
+      allow delete: if isStaff() && sameOrg(resource.data.organizationId);
     }
 
     // Audit logs -- staff may read their org's audit trail. Writes are
