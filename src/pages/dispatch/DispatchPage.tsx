@@ -118,8 +118,10 @@ export function DispatchPage() {
     }
   }
 
-  function driverLabel(driverId: string | undefined): string {
-    const d = drivers.find((x) => x.driverId === driverId)
+  // TripRecord.driverId holds the driver's Auth uid (DriverRecord.userId),
+  // not DriverRecord.driverId -- see the matching note in TripsPage.tsx.
+  function driverLabel(driverUid: string | undefined): string {
+    const d = drivers.find((x) => x.userId === driverUid)
     return d ? `${d.firstName} ${d.lastName}` : 'Unknown driver'
   }
 
@@ -206,11 +208,13 @@ export function DispatchPage() {
                             className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
                           >
                             <option value="">Driver…</option>
-                            {drivers.map((d) => (
-                              <option key={d.driverId} value={d.driverId}>
-                                {d.firstName} {d.lastName}
-                              </option>
-                            ))}
+                            {drivers
+                              .filter((d) => Boolean(d.userId))
+                              .map((d) => (
+                                <option key={d.driverId} value={d.userId}>
+                                  {d.firstName} {d.lastName}
+                                </option>
+                              ))}
                           </select>
                           <select
                             value={pendingVehicle[trip.tripId] ?? ''}

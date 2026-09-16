@@ -163,9 +163,13 @@ export function TripsPage() {
 
   const isEditing = typeof modalTrip === 'object' && modalTrip !== null
 
-  function driverName(driverId: string | undefined): string {
-    if (!driverId) return 'Unassigned'
-    const d = drivers.find((x) => x.driverId === driverId)
+  // TripRecord.driverId is compared to request.auth.uid in firestore.rules
+  // (isDriver() && resource.data.driverId == request.auth.uid), so it must
+  // hold the driver's Firebase Auth uid -- i.e. DriverRecord.userId -- not
+  // DriverRecord.driverId (that record's own Firestore doc id).
+  function driverName(driverUid: string | undefined): string {
+    if (!driverUid) return 'Unassigned'
+    const d = drivers.find((x) => x.userId === driverUid)
     return d ? `${d.firstName} ${d.lastName}` : 'Unknown driver'
   }
 
@@ -562,12 +566,23 @@ export function TripsPage() {
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
               >
                 <option value="">Unassigned</option>
-                {drivers.map((d) => (
-                  <option key={d.driverId} value={d.driverId}>
-                    {d.firstName} {d.lastName}
-                  </option>
-                ))}
+                {/* value is the driver's Auth uid (DriverRecord.userId), not
+                    DriverRecord.driverId -- see driverName() above. Only
+                    drivers with a linked login can be assigned, since the
+                    trip has to be reachable by that driver in the app. */}
+                {drivers
+                  .filter((d) => Boolean(d.userId))
+                  .map((d) => (
+                    <option key={d.driverId} value={d.userId}>
+                      {d.firstName} {d.lastName}
+                    </option>
+                  ))}
               </select>
+              {drivers.some((d) => !d.userId) && (
+                <p className="mt-1 text-xs text-slate-400">
+                  Some drivers aren't shown — they have no linked login yet (add one on the Drivers page).
+                </p>
+              )}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Vehicle</label>
