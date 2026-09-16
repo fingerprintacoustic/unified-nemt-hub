@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Camera, CalendarClock, ChevronRight, MapPin } from 'lucide-react'
+import { Camera, CalendarClock, ChevronRight, MapPin, Navigation } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { useAuth } from '../../context/AuthContext'
 import { toUserMessage } from '../../lib/errors'
+import { buildDirectionsUrl, navigationTargetForTrip } from '../../lib/navigation'
 import { observeOrgVehicles } from '../../services/vehicles'
 import { observeMyTrips, setTripStatus } from '../../services/trips'
 import type { TripRecord, TripStatus, VehicleRecord } from '../../types'
@@ -117,6 +118,7 @@ export function DriverHomePage() {
               const vehicle = vehicleFor(trip.vehicleId)
               const step = NEXT_STATUS[trip.status]
               const isPending = pendingId === trip.tripId
+              const navTarget = navigationTargetForTrip(trip)
               return (
                 <Card key={trip.tripId}>
                   <div className="flex items-start justify-between gap-3">
@@ -157,15 +159,28 @@ export function DriverHomePage() {
                     {trip.notes && <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs">{trip.notes}</p>}
                   </div>
 
-                  {step && (
-                    <Button
-                      className="mt-4 w-full"
-                      loading={isPending}
-                      onClick={() => handleAdvance(trip)}
-                    >
-                      {step.label}
-                    </Button>
-                  )}
+                  <div className="mt-4 flex gap-2">
+                    {navTarget && (
+                      <a
+                        href={buildDirectionsUrl(navTarget.lat, navTarget.lng)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-slate-100 px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200"
+                      >
+                        <Navigation className="h-4 w-4" aria-hidden="true" />
+                        {navTarget.label}
+                      </a>
+                    )}
+                    {step && (
+                      <Button
+                        className="flex-1"
+                        loading={isPending}
+                        onClick={() => handleAdvance(trip)}
+                      >
+                        {step.label}
+                      </Button>
+                    )}
+                  </div>
                 </Card>
               )
             })}
