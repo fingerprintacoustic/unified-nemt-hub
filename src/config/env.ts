@@ -30,4 +30,13 @@ export const firebaseEnv: FirebaseEnv = {
 export const hasFirebaseConfig = (): boolean =>
   firebaseEnv.apiKey.length > 0 && firebaseEnv.projectId.length > 0
 
+/**
+ * Google Maps Platform (Geocoding API), used by the trip form to resolve a
+ * typed address to coordinates. Optional: without it, trip forms fall back
+ * to manual latitude/longitude entry (see src/services/geocoding.ts).
+ */
+export const googleMapsApiKey: string = read('VITE_GOOGLE_MAPS_API_KEY')
+
+export const hasGoogleMapsConfig = (): boolean => googleMapsApiKey.length > 0
+
 export const appName = 'Unified NEMT Operations Hub'
