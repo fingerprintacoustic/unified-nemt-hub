@@ -83,7 +83,7 @@ unconfigured.
   placeholder copy that isn't in the schema (background checks, document
   management, maintenance history) — see prior scoping message.
 
-### Phase 4 — Trips / dispatch: DONE (staff side only)
+### Phase 4 — Trips / dispatch: DONE
 
 - `src/pages/trips/TripsPage.tsx`: full trip record management (schedule,
   addresses, mobility needs, driver/vehicle, status, fare, distance/duration,
@@ -93,25 +93,33 @@ unconfigured.
   COMPLETED/CANCELLED/NO_SHOW, sorted soonest-first, with inline
   driver/vehicle quick-assign (bumps SCHEDULED→ASSIGNED as a UI convenience)
   and unassign.
-- **New: Google Maps Geocoding integration** (`src/lib/googleMaps.ts`,
+- **Google Maps Geocoding integration** (`src/lib/googleMaps.ts`,
   `src/services/geocoding.ts`, `VITE_GOOGLE_MAPS_API_KEY`). `TripRecord`
   requires a `GeoPoint` for origin/destination, separate from the free-text
   address fields, and this app had no geocoding before. Direct
   browser-to-Google-Maps-JS-API call with a referrer-restricted key (no
-  Cloud Function proxy) — decided explicitly, see below. **The key is not
-  yet set** in `nemt-hub-dev`'s `.env`; until it is, the trip form falls
-  back to manual latitude/longitude entry (verified working this way).
-- Verified end-to-end in-browser (manual-coordinates path, since no key is
-  configured yet): create with a real `GeoPoint` written, Dispatch
-  assign/unassign (confirmed `deleteField()` actually removes the fields,
-  not just blanks them), status change, edit, delete.
+  Cloud Function proxy) — decided explicitly. **Key created and set
+  2026-09-16** — Geocoding API + Maps JavaScript API enabled on
+  `nemt-hub-dev` (the production project), key restricted to those two APIs
+  and to `http://localhost:5173/*` (add the production domain's referrer
+  when that domain exists). Billing on `nemt-hub-dev` was already linked
+  (shared "Firebase Payment" billing account); a budget alert was
+  recommended.
+- **Verified live with the real key**: entered "1600 Amphitheatre Parkway,
+  Mountain View, CA" and "1 Infinite Loop, Cupertino, CA" in the trip form,
+  clicked Verify on each, got back correct formatted addresses, submitted,
+  and confirmed the exact real-world coordinates
+  (37.4224864, -122.0855962 / 37.3318598, -122.0302485) were written to
+  the trip's `origin`/`destination` GeoPoints in Firestore. The manual
+  lat/lng fallback path (used when the key isn't set) was verified earlier
+  and still works if the key is ever removed.
 - **Not built:** automatic distance/duration calculation (would need a
   separate Distance Matrix–type API call — not requested, not added).
 - **Bug found and fixed while scoping Phase 5, see below:** the driver
   assignment dropdowns on this page and Dispatch were storing the wrong
   value in `TripRecord.driverId`.
 
-### Phase 5 — Driver PWA: DONE (trips tab; Inspections tab is Phase 6)
+### Phase 5 — Driver PWA: DONE
 
 - **Fixed a real bug from this Phase 4 work** (`710cd30`): `firestore.rules`
   compares a trip's `driverId` directly to `request.auth.uid` for a driver's
@@ -187,12 +195,11 @@ unconfigured.
 ## Open decisions / known gaps
 
 - **`DriverLayout` has no sign-out button** — see Phase 6 note above.
-- **Google Maps API key not yet set.** Create a key at
-  console.cloud.google.com (same GCP project as `nemt-hub-dev` or a
-  separate one), enable "Geocoding API" + "Maps JavaScript API", restrict
-  it by HTTP referrer to your dev/prod origins and to those two APIs, then
-  set `VITE_GOOGLE_MAPS_API_KEY` in `.env`. Until then, trip addresses are
-  entered as manual lat/lng (works, just not the intended UX).
+- **Google Maps key referrer list is dev-only.** Only `http://localhost:5173/*`
+  is on the key's allowed-websites list right now (Phase 4 detail above).
+  Add the production domain's referrer once one exists, or geocoding will
+  fail there (falls back to nothing — the UI will show a "could not
+  verify" error, not manual entry, since the key IS configured).
 - No self-service password reset / profile update flow in the app (admin
   invite still ends with a printed reset link, delivered manually).
   `scripts/set-user-password.mjs` is a dev-only helper for setting a known
@@ -221,11 +228,11 @@ unconfigured.
 
 ## Last worked on / next step
 
-- **Last:** built Inspections (Phase 6) — driver submission form with
-  photo/video upload, condition ratings, damage notes, and auto-flagging;
-  staff review (approve/flag) that also closes the Phase-3 loop on
-  `VehicleRecord.lastInspectionAt`. Verified end-to-end as a real
-  DRIVER-role account through to staff approval.
-- **Next:** Phase 7 — Navigation / comms. Two small unaddressed items
-  whenever convenient: the Google Maps API key (Phase 4) and a sign-out
-  button on the Driver PWA layout (noticed in Phase 6).
+- **Last:** set up and verified the Google Maps API key (Phase 4's
+  remaining item) — created on `nemt-hub-dev`, restricted to
+  Geocoding API + Maps JavaScript API and to `http://localhost:5173/*`,
+  billing already linked. Confirmed real addresses geocode correctly and
+  write real coordinates to trips.
+- **Next:** Phase 7 — Navigation / comms, or the Driver PWA sign-out
+  button first (small, noticed in Phase 6). Also remember to add the
+  production domain to the Maps key's referrer list once one exists.
