@@ -16,7 +16,7 @@ _Last updated: 2026-09-16_
 | 4 | Trips / dispatch | **DONE** |
 | 5 | Driver PWA | **DONE** |
 | 6 | Inspections | **DONE** |
-| 7 | Navigation / comms | NOT STARTED |
+| 7 | Navigation / comms | **PARTIAL** (navigation done; comms deferred) |
 | 8 | Telematics | NOT STARTED |
 | 9 | Payroll | NOT STARTED |
 | 10 | Billing / reports | NOT STARTED |
@@ -188,10 +188,49 @@ unconfigured.
 - **Sign-out gap noticed here, fixed later (`86692b3`):** `DriverLayout.tsx`
   had no sign-out control at all. See "Last worked on" below.
 
-### Phases 7–12: NOT STARTED
+### Phase 7 — Navigation / comms: PARTIAL (navigation done; comms deferred)
+
+Unlike every phase before it, this one had **no existing schema, rules, or
+dedicated page** to build against — scoped explicitly with the user before
+writing anything.
+
+- **Navigation (done):** `src/lib/navigation.ts` — `buildDirectionsUrl()`
+  (Google's documented cross-platform directions URL, no API key/Maps
+  Platform call needed) and `navigationTargetForTrip()`, which points at
+  the origin while SCHEDULED/ASSIGNED/EN_ROUTE and the destination once
+  PICKED_UP. A "Navigate to pickup/dropoff" link now sits next to the
+  status button on each driver trip card (`DriverHomePage.tsx`). Verified
+  as a real DRIVER-role account through the full lifecycle — confirmed
+  the link's coordinates match the trip's origin/destination exactly at
+  each stage, and disappears once dropped off.
+- **Comms: explicitly deferred**, per the user's own call. Would need a
+  new `messages`/`notifications` collection, new `firestore.rules`, and
+  real-time UI on both the Dispatch and Driver PWA sides — treated as its
+  own future decision, not bundled in here.
+- **Real `firestore.rules` bug found while testing navigation, NOT
+  fixed — needs authorization like the earlier delete-rule bugs.** The
+  `trips` driver-update branch compares
+  `request.resource.data.vehicleId == resource.data.vehicleId` to stop a
+  driver reassigning their own trip's vehicle. When `vehicleId` is
+  **entirely absent** from the document (a trip can have a driver assigned
+  without a vehicle yet — `vehicleId` is optional), that comparison denies
+  the whole branch: confirmed via a clean, isolated REST test (custom-token
+  sign-in as the driver, `PATCH` with only `{status: ...}`) → `403
+  PERMISSION_DENIED`, even though the driver is legitimately updating their
+  own trip. Likely fix: `request.resource.data.get('vehicleId', null) ==
+  resource.data.get('vehicleId', null)` (Firestore's documented
+  absent-field-safe map accessor), mirroring the `organizationId`/`driverId`
+  comparisons on the same line, which don't have this problem only because
+  those two fields are always present. Not exercised in earlier
+  verification because every trip tested so far happened to have a
+  `vehicleId` set before a driver touched it.
+
+### Phases 8–12: NOT STARTED
 
 ## Open decisions / known gaps
 
+- **`trips` driver-update rule bug (missing `vehicleId`) — needs
+  authorization to fix.** See Phase 7 detail above.
 - **Google Maps key referrer list is dev-only.** Only `http://localhost:5173/*`
   is on the key's allowed-websites list right now (Phase 4 detail above).
   Add the production domain's referrer once one exists, or geocoding will
@@ -233,9 +272,10 @@ unconfigured.
 
 ## Last worked on / next step
 
-- **Last:** set up and verified the Google Maps API key, relocated the
-  project to `StudioProjects\unified-nemt-hub`, and added the missing
-  Driver PWA sign-out button (mirrors the staff Sidebar's logout pattern) —
-  verified with a real DRIVER-role account.
-- **Next:** Phase 7 — Navigation / comms. Also remember to add the
-  production domain to the Maps key's referrer list once one exists.
+- **Last:** built and verified the navigation deep-link (Phase 7's scoped-in
+  half; comms deferred by the user's own decision). Found a real
+  `firestore.rules` bug along the way (driver update denied when a trip has
+  no `vehicleId` yet) — reported, not fixed, awaiting authorization.
+- **Next:** decide on the `vehicleId` rules fix, then Phase 8 — Telematics.
+  Also remember to add the production domain to the Maps key's referrer
+  list once one exists.
