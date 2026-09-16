@@ -12,7 +12,7 @@ _Last updated: 2026-09-16_
 |---|---|---|
 | 1 | Foundation | **DONE** |
 | 2 | Auth / orgs / roles | **DONE** |
-| 3 | Vehicles / drivers | **PARTIAL** ← blocked on a rules bug, see below |
+| 3 | Vehicles / drivers | **DONE** |
 | 4 | Trips / dispatch | NOT STARTED |
 | 5 | Driver PWA | NOT STARTED |
 | 6 | Inspections | NOT STARTED |
@@ -56,22 +56,21 @@ unconfigured.
   `seed-organization.mjs` for a new org) because a browser can't create a
   Firebase Auth account for someone else.
 
-### Phase 3 — Vehicles / drivers: PARTIAL
+### Phase 3 — Vehicles / drivers: DONE
 
 - `src/pages/drivers/DriversPage.tsx` and `src/pages/vehicles/VehiclesPage.tsx`
-  replace the old placeholders: live list, add, edit, and status-change all
-  work and were verified in-browser against the deployed `nemt-hub-dev`
-  rules (`bb41329`).
-- **Delete does not work for either collection — confirmed via live testing,
-  not just reading the rules.** `firestore.rules`' `drivers` and `vehicles`
-  `allow update, delete` clauses both require
-  `sameOrg(request.resource.data.organizationId)`, but `request.resource` is
-  null on a delete, so the check always fails and every delete attempt gets
-  `permission-denied`. (`users`' delete rule does this correctly — it only
-  checks `resource.data`, not `request.resource.data`.) Not fixed — needs
-  the same kind of authorization the `$(database)` scope fix got before
-  touching `firestore.rules` again. UI already restricts Delete to ADMIN;
-  DISPATCHER/MANAGER only get the status dropdown either way.
+  replace the old placeholders: live list, add, edit, status-change, and
+  delete all verified end-to-end in-browser against the deployed
+  `nemt-hub-dev` rules (`bb41329`, `e980935`).
+- Fixed a real `firestore.rules` bug found during that verification: `drivers`
+  and `vehicles` combined `allow update, delete` under a condition that
+  checked `request.resource.data.organizationId`, which is null on a delete,
+  so every delete was silently denied. Split into separate `update`/`delete`
+  allow blocks (`e980935`) — no change to who's authorized, purely a
+  null-reference fix. Redeployed and re-verified: create, edit, status
+  change, and delete all round-trip correctly for both collections now.
+  UI still restricts the Delete button to ADMIN (stricter than the rules
+  require) — DISPATCHER/MANAGER only get the status dropdown.
 - Driver-to-login linking (`DriverRecord.userId`) is a manual dropdown of
   existing DRIVER-role users — no auto-provisioning flow.
 - Not built: search/filter beyond the full list, and nothing from the old
@@ -82,11 +81,12 @@ unconfigured.
 
 ## Open decisions / known gaps
 
-- **`firestore.rules` delete bug (drivers/vehicles) — needs authorization to
-  fix.** See Phase 3 detail above. Likely fix: split `update` and `delete`
-  into separate `allow` statements so `delete` only checks
-  `resource.data.organizationId`, mirroring how `users`' delete rule is
-  already written.
+- **`firestore.rules`: `locations/{locationId}` likely has the same delete
+  bug** that was just fixed on `drivers`/`vehicles` (identical
+  `allow update, delete: if ... && sameOrg(request.resource.data...)`
+  pattern). Not exercised by any current UI, so not fixed or even confirmed
+  live yet — needs the same kind of authorization before touching
+  `firestore.rules` again.
 - No self-service password reset / profile update flow in the app (admin
   invite still ends with a printed reset link, delivered manually).
   `scripts/set-user-password.mjs` is a dev-only helper for setting a known
@@ -115,9 +115,10 @@ unconfigured.
 
 ## Last worked on / next step
 
-- **Last:** built Drivers and Vehicles CRUD screens (Phase 3) — list, add,
-  edit, and status-change verified end-to-end in-browser. Found and
-  confirmed (not fixed) a `firestore.rules` bug that blocks delete on both
-  collections.
-- **Next:** get authorization to fix the drivers/vehicles delete rule, then
-  Phase 3 is done. After that: Phase 4 — Trips / dispatch.
+- **Last:** built Drivers and Vehicles CRUD screens (Phase 3), found and
+  fixed the `drivers`/`vehicles` delete-rule bug in `firestore.rules`,
+  redeployed, and re-verified create/edit/status-change/delete end-to-end
+  in-browser for both collections. Phase 3 is now complete.
+- **Next:** Phase 4 — Trips / dispatch. Possibly also worth a quick pass to
+  confirm/fix the likely-identical `locations` delete bug before it's
+  exercised by a UI.
