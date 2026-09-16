@@ -47,6 +47,29 @@ export function observeOrgTrips(
   })
 }
 
+/**
+ * Live list of trips assigned to the signed-in driver (Driver PWA). Matches
+ * firestore.rules' driver-read branch exactly: resource.data.driverId ==
+ * request.auth.uid -- so `driverUid` must be the caller's own Firebase Auth
+ * uid, not a drivers/{driverId} document id. Sorted client-side, same
+ * reasoning as observeOrgTrips.
+ */
+export function observeMyTrips(
+  driverUid: string,
+  onData: (records: TripRecord[]) => void,
+  onError?: (error: unknown) => void,
+): () => void {
+  const q = query(tripsRef(), where('driverId', '==', driverUid))
+  return onSnapshot(q, {
+    next: (snapshot: QuerySnapshot) => {
+      const records = snapshot.docs.map((d) => d.data() as TripRecord)
+      records.sort((a, b) => a.scheduledPickupAt.toMillis() - b.scheduledPickupAt.toMillis())
+      onData(records)
+    },
+    error: onError,
+  })
+}
+
 export type NewTripInput = Omit<TripRecord, 'tripId' | 'createdAt' | 'updatedAt'>
 
 export async function createTrip(input: NewTripInput): Promise<string> {
