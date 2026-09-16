@@ -13,7 +13,7 @@ _Last updated: 2026-09-16_
 | 1 | Foundation | **DONE** |
 | 2 | Auth / orgs / roles | **DONE** |
 | 3 | Vehicles / drivers | **DONE** |
-| 4 | Trips / dispatch | NOT STARTED |
+| 4 | Trips / dispatch | **DONE** (staff side only) |
 | 5 | Driver PWA | NOT STARTED |
 | 6 | Inspections | NOT STARTED |
 | 7 | Navigation / comms | NOT STARTED |
@@ -83,10 +83,46 @@ unconfigured.
   placeholder copy that isn't in the schema (background checks, document
   management, maintenance history) — see prior scoping message.
 
-### Phases 4–12: NOT STARTED
+### Phase 4 — Trips / dispatch: DONE (staff side only)
+
+- `src/pages/trips/TripsPage.tsx`: full trip record management (schedule,
+  addresses, mobility needs, driver/vehicle, status, fare, distance/duration,
+  broker, notes). `firestore.rules`' `trips` rule was already correct
+  (delete already split from update) — no rules change needed here.
+- `src/pages/dispatch/DispatchPage.tsx`: operational board of trips not yet
+  COMPLETED/CANCELLED/NO_SHOW, sorted soonest-first, with inline
+  driver/vehicle quick-assign (bumps SCHEDULED→ASSIGNED as a UI convenience)
+  and unassign.
+- **New: Google Maps Geocoding integration** (`src/lib/googleMaps.ts`,
+  `src/services/geocoding.ts`, `VITE_GOOGLE_MAPS_API_KEY`). `TripRecord`
+  requires a `GeoPoint` for origin/destination, separate from the free-text
+  address fields, and this app had no geocoding before. Direct
+  browser-to-Google-Maps-JS-API call with a referrer-restricted key (no
+  Cloud Function proxy) — decided explicitly, see below. **The key is not
+  yet set** in `nemt-hub-dev`'s `.env`; until it is, the trip form falls
+  back to manual latitude/longitude entry (verified working this way).
+- Verified end-to-end in-browser (manual-coordinates path, since no key is
+  configured yet): create with a real `GeoPoint` written, Dispatch
+  assign/unassign (confirmed `deleteField()` actually removes the fields,
+  not just blanks them), status change, edit, delete.
+- **Not built (explicitly out of scope, belongs to Phase 5 Driver PWA):**
+  a driver's own view of trips assigned to them, or the
+  EN_ROUTE→PICKED_UP→DROPPED_OFF progression a driver would do themselves.
+  `firestore.rules` already supports it (a driver may update a trip
+  assigned to them, but not reassign driver/vehicle/org) — just no UI yet.
+- **Not built:** automatic distance/duration calculation (would need a
+  separate Distance Matrix–type API call — not requested, not added).
+
+### Phases 5–12: NOT STARTED
 
 ## Open decisions / known gaps
 
+- **Google Maps API key not yet set.** Create a key at
+  console.cloud.google.com (same GCP project as `nemt-hub-dev` or a
+  separate one), enable "Geocoding API" + "Maps JavaScript API", restrict
+  it by HTTP referrer to your dev/prod origins and to those two APIs, then
+  set `VITE_GOOGLE_MAPS_API_KEY` in `.env`. Until then, trip addresses are
+  entered as manual lat/lng (works, just not the intended UX).
 - No self-service password reset / profile update flow in the app (admin
   invite still ends with a printed reset link, delivered manually).
   `scripts/set-user-password.mjs` is a dev-only helper for setting a known
@@ -115,8 +151,9 @@ unconfigured.
 
 ## Last worked on / next step
 
-- **Last:** built Drivers and Vehicles CRUD screens (Phase 3), found and
-  fixed the delete-rule bug in `firestore.rules` on `drivers`, `vehicles`,
-  and `locations`, redeploying and re-verifying each against the real
-  deployed rules. Phase 3 is complete.
-- **Next:** Phase 4 — Trips / dispatch.
+- **Last:** built Trips and Dispatch (Phase 4, staff side), added a Google
+  Maps geocoding integration for trip addresses (key not yet configured —
+  manual lat/lng fallback verified working), extracted a shared `TextField`
+  component. All verified end-to-end in-browser.
+- **Next:** set the Google Maps API key when convenient. Then Phase 5 —
+  Driver PWA (includes the driver-side trip view/progression noted above).
