@@ -16,6 +16,7 @@ import { PayrollPage } from '../pages/payroll/PayrollPage'
 import { ReportsPage } from '../pages/reports/ReportsPage'
 import { SettingsPage } from '../pages/settings/SettingsPage'
 import { TripsPage } from '../pages/trips/TripsPage'
+import { UsersPage } from '../pages/users/UsersPage'
 import { VehiclesPage } from '../pages/vehicles/VehiclesPage'
 
 export const router = createBrowserRouter([
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
       { path: 'payroll', element: <ProtectedRoute minRole="MANAGER"><PayrollPage /></ProtectedRoute> },
       { path: 'billing', element: <ProtectedRoute minRole="MANAGER"><BillingPage /></ProtectedRoute> },
       { path: 'reports', element: <ProtectedRoute minRole="MANAGER"><ReportsPage /></ProtectedRoute> },
+      { path: 'users', element: <ProtectedRoute minRole="MANAGER"><UsersPage /></ProtectedRoute> },
       { path: 'integrations', element: <ProtectedRoute minRole="ADMIN"><IntegrationsPage /></ProtectedRoute> },
       { path: 'settings', element: <ProtectedRoute minRole="ADMIN"><SettingsPage /></ProtectedRoute> },
     ],

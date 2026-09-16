@@ -5,12 +5,15 @@ import {
   getDocs,
   onSnapshot,
   query,
+  serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   type DocumentSnapshot,
+  type QuerySnapshot,
 } from 'firebase/firestore'
 import { getFirestore } from '../lib/firebase'
-import type { UserRecord, UserRole } from '../types'
+import type { UserRecord, UserRole, UserStatus } from '../types'
 
 const USERS_COLLECTION = 'users'
 
@@ -64,4 +67,46 @@ export async function upsertUserRecord(
   user: Partial<UserRecord> & { uid: string; organizationId: string; role: UserRole },
 ): Promise<void> {
   await setDoc(userDocRef(user.uid), { ...user, updatedAt: new Date() }, { merge: true })
+}
+
+/**
+ * Live list of every user in an organization, for the Users admin screen.
+ * Staff-only per firestore.rules (isStaff() && sameOrg(...)). Sorted by name
+ * client-side (rather than an orderBy clause) so this doesn't need a new
+ * composite Firestore index just to list a page of users.
+ */
+export function observeOrgUsers(
+  organizationId: string,
+  onData: (records: UserRecord[]) => void,
+  onError?: (error: unknown) => void,
+): () => void {
+  const q = query(usersRef(), where('organizationId', '==', organizationId))
+  return onSnapshot(q, {
+    next: (snapshot: QuerySnapshot) => {
+      const records = snapshot.docs.map((d) => d.data() as UserRecord)
+      records.sort((a, b) =>
+        `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`),
+      )
+      onData(records)
+    },
+    error: onError,
+  })
+}
+
+/**
+ * Change another user's role. Only an ADMIN may do this (firestore.rules), and
+ * only for a user other than themself — self-role-changes are rejected by the
+ * rules regardless of caller, so this is never used on the caller's own uid.
+ */
+export async function updateUserRole(uid: string, role: UserRole): Promise<void> {
+  await updateDoc(userDocRef(uid), { role, updatedAt: serverTimestamp() })
+}
+
+/**
+ * Activate or deactivate a user (firestore.rules: any staff member may change
+ * another user's status within their own org, so long as role/organizationId
+ * are left unchanged).
+ */
+export async function setUserStatus(uid: string, status: UserStatus): Promise<void> {
+  await updateDoc(userDocRef(uid), { status, updatedAt: serverTimestamp() })
 }
