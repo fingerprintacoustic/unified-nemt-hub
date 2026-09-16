@@ -71,6 +71,12 @@ unconfigured.
   change, and delete all round-trip correctly for both collections now.
   UI still restricts the Delete button to ADMIN (stricter than the rules
   require) — DISPATCHER/MANAGER only get the status dropdown.
+- The identical bug also existed on `locations/{locationId}` (no UI yet).
+  Fixed the same way and verified directly — signed in as the seeded admin
+  via a custom token and hit the Firestore REST API to create then delete a
+  location document; both succeeded (`f6a2ed5`). All four collections
+  (`drivers`, `vehicles`, `locations`, plus `users` which was already
+  correct) now have working delete rules.
 - Driver-to-login linking (`DriverRecord.userId`) is a manual dropdown of
   existing DRIVER-role users — no auto-provisioning flow.
 - Not built: search/filter beyond the full list, and nothing from the old
@@ -81,12 +87,6 @@ unconfigured.
 
 ## Open decisions / known gaps
 
-- **`firestore.rules`: `locations/{locationId}` likely has the same delete
-  bug** that was just fixed on `drivers`/`vehicles` (identical
-  `allow update, delete: if ... && sameOrg(request.resource.data...)`
-  pattern). Not exercised by any current UI, so not fixed or even confirmed
-  live yet — needs the same kind of authorization before touching
-  `firestore.rules` again.
 - No self-service password reset / profile update flow in the app (admin
   invite still ends with a printed reset link, delivered manually).
   `scripts/set-user-password.mjs` is a dev-only helper for setting a known
@@ -116,9 +116,7 @@ unconfigured.
 ## Last worked on / next step
 
 - **Last:** built Drivers and Vehicles CRUD screens (Phase 3), found and
-  fixed the `drivers`/`vehicles` delete-rule bug in `firestore.rules`,
-  redeployed, and re-verified create/edit/status-change/delete end-to-end
-  in-browser for both collections. Phase 3 is now complete.
-- **Next:** Phase 4 — Trips / dispatch. Possibly also worth a quick pass to
-  confirm/fix the likely-identical `locations` delete bug before it's
-  exercised by a UI.
+  fixed the delete-rule bug in `firestore.rules` on `drivers`, `vehicles`,
+  and `locations`, redeploying and re-verifying each against the real
+  deployed rules. Phase 3 is complete.
+- **Next:** Phase 4 — Trips / dispatch.
