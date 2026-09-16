@@ -1,5 +1,6 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import { Ambulance, Camera, ClipboardCheck } from 'lucide-react'
+import { useState } from 'react'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Ambulance, Camera, ClipboardCheck, LogOut } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { formatRole, initialsFrom } from '../../lib/format'
 
@@ -8,11 +9,25 @@ import { formatRole, initialsFrom } from '../../lib/format'
  * placeholders,and large touch targets..
  */
 export function DriverLayout() {
-  const { user, userRecord } = useAuth()
+  const { user, userRecord, logout } = useAuth()
+  const navigate = useNavigate()
+  const [signingOut, setSigningOut] = useState(false)
   const displayName =
     user?.displayName ??
     (userRecord ? `${userRecord.firstName} ${userRecord.lastName}`.trim() : undefined) ??
     'Driver'
+
+  const handleLogout = async () => {
+    setSigningOut(true)
+    try {
+      await logout()
+      navigate('/login', { replace: true })
+    } catch (error) {
+      console.error('Logout failed:', error)
+    } finally {
+      setSigningOut(false)
+    }
+  }
 
   const tabs = [
     { to: '/driver', label: 'My Trips', icon: ClipboardCheck, end: false },
@@ -32,11 +47,23 @@ export function DriverLayout() {
             <p className="text-[10px] uppercase tracking-wider text-slate-400">{formatRole(userRecord?.role ?? 'DRIVER')}</p>
           </div>
         </div>
-        <div className="relative" title={displayName}>
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-xs font-semibold">
-            
-{initialsFrom(displayName)}
+        <div className="flex items-center gap-2">
+          <span
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-xs font-semibold"
+            title={displayName}
+          >
+            {initialsFrom(displayName)}
           </span>
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={signingOut}
+            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white disabled:opacity-50"
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <LogOut className="h-4.5 w-4.5" aria-hidden="true" />
+          </button>
         </div>
       </header>
 
