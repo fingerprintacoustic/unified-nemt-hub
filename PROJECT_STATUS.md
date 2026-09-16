@@ -14,8 +14,8 @@ _Last updated: 2026-09-16_
 | 2 | Auth / orgs / roles | **DONE** |
 | 3 | Vehicles / drivers | **DONE** |
 | 4 | Trips / dispatch | **DONE** |
-| 5 | Driver PWA | **DONE** (trips tab; Inspections tab is Phase 6) |
-| 6 | Inspections | NOT STARTED |
+| 5 | Driver PWA | **DONE** |
+| 6 | Inspections | **DONE** |
 | 7 | Navigation / comms | NOT STARTED |
 | 8 | Telematics | NOT STARTED |
 | 9 | Payroll | NOT STARTED |
@@ -142,10 +142,51 @@ unconfigured.
   in Firestore at each step, watched it move to history on completion.
 - Inspections tab stays a placeholder — that's Phase 6.
 
-### Phases 6–12: NOT STARTED
+### Phase 6 — Inspections: DONE
+
+- `src/services/inspections.ts`: `newInspectionId()` (reserves a doc id up
+  front so Storage uploads have a stable path before the Firestore doc
+  exists), `observeOrgInspections` (staff), `observeMyInspections` (driver,
+  `driverId == own uid`), `createInspection`, `reviewInspection`
+  (staff approve/flag), `deleteInspection`. `firestore.rules`' inspections
+  rule was already correct — no changes needed.
+- `src/pages/driver/DriverInspectionsPage.tsx`: pre-trip/post-trip form —
+  vehicle picker, optional link to one of the driver's own active trips,
+  odometer, GPS via `navigator.geolocation` (optional, never blocks
+  submit), 5-point condition ratings + safety equipment, damage notes,
+  photo/video upload through the Phase-1 `storage.ts`/`storage.rules`
+  plumbing, required driver-confirmation checkbox. `flagged` auto-sets from
+  any SEVERE damage note, POOR rating, or missing safety equipment — a UI
+  convenience, not rules-enforced.
+- `src/pages/inspections/InspectionsPage.tsx`: staff list + detail view,
+  Approve/Flag actions. **Approving also calls the new
+  `setVehicleLastInspection()`** (`src/services/vehicles.ts`) — closes the
+  loop on `VehicleRecord.lastInspectionAt`, which Phase 3 left read-only
+  pending this. Only staff can write vehicles, so the bump happens at
+  review time, not driver submission.
+- **Two simplifications, not built:** no signature pad
+  (`driverSignatureUrl` stays unset — the confirmation checkbox is the only
+  attestation); damage-note photos aren't wired per-note (`photoUrls`
+  always `[]`) — only the inspection-level `media[]` array is used.
+- **Verified as a real DRIVER-role account:** submitted a pre-trip
+  inspection with a POOR brake rating and a SEVERE damage note, confirmed
+  `flagged: true` was auto-set and the Firestore write matched the schema
+  exactly. Then as staff: resolved to the right vehicle/driver names,
+  approved it, confirmed the vehicle's "Last inspection" column updated.
+  **Not exercised by browser automation:** an actual file upload (the
+  automation tool has no file-input capability) and GPS capture (no real
+  device location) — both call pre-existing, already-reviewed helpers with
+  no new logic of their own.
+- **Noticed, not fixed:** the Driver PWA layout (`DriverLayout.tsx`) has no
+  sign-out control at all — had to clear browser storage to switch test
+  accounts. Minor UX gap, easy fix, flagging for a deliberate decision on
+  where to put it rather than bolting it on mid-Phase-6.
+
+### Phases 7–12: NOT STARTED
 
 ## Open decisions / known gaps
 
+- **`DriverLayout` has no sign-out button** — see Phase 6 note above.
 - **Google Maps API key not yet set.** Create a key at
   console.cloud.google.com (same GCP project as `nemt-hub-dev` or a
   separate one), enable "Geocoding API" + "Maps JavaScript API", restrict
@@ -180,12 +221,11 @@ unconfigured.
 
 ## Last worked on / next step
 
-- **Last:** built the driver-facing trip view (Phase 5's trips tab), fixing
-  a real bug from Phase 4 along the way (trip `driverId` was storing the
-  wrong id and would have been invisible to real drivers — never actually
-  hit in production, since no driver had been assigned a trip yet).
-  Verified the full status-progression lifecycle as a real DRIVER-role
-  account.
-- **Next:** Phase 6 — Inspections (the Driver PWA's other tab, currently a
-  placeholder). Google Maps API key from Phase 4 is still unset whenever
-  convenient.
+- **Last:** built Inspections (Phase 6) — driver submission form with
+  photo/video upload, condition ratings, damage notes, and auto-flagging;
+  staff review (approve/flag) that also closes the Phase-3 loop on
+  `VehicleRecord.lastInspectionAt`. Verified end-to-end as a real
+  DRIVER-role account through to staff approval.
+- **Next:** Phase 7 — Navigation / comms. Two small unaddressed items
+  whenever convenient: the Google Maps API key (Phase 4) and a sign-out
+  button on the Driver PWA layout (noticed in Phase 6).
