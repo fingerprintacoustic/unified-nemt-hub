@@ -136,26 +136,33 @@ service cloud.firestore {
 
     // Drivers -- staff manage drivers in their org. A driver may read their
     // own linked driver record (DriverRecord.userId == caller uid).
+    // update and delete are separate allow blocks, not `allow update, delete`
+    // -- request.resource is null on a delete, so a shared condition that
+    // reads request.resource.data would always fail (and did) for delete.
     match /drivers/{driverId} {
       allow read: if isActiveUser() && (
         (isStaff() && sameOrg(resource.data.organizationId))
         || (isDriver() && resource.data.userId == request.auth.uid)
       );
       allow create: if isStaff() && sameOrg(request.resource.data.organizationId);
-      allow update, delete: if isStaff()
+      allow update: if isStaff()
         && sameOrg(resource.data.organizationId)
         && sameOrg(request.resource.data.organizationId);
+      allow delete: if isStaff() && sameOrg(resource.data.organizationId);
     }
 
     // Vehicles -- staff manage; any active org member (including drivers)
     // may read vehicle records in their own org, since drivers need to see
-    // vehicle info for assigned trips/inspections.
+    // vehicle info for assigned trips/inspections. update/delete are split
+    // for the same reason as drivers above (request.resource is null on
+    // delete).
     match /vehicles/{vehicleId} {
       allow read: if sameOrg(resource.data.organizationId);
       allow create: if isStaff() && sameOrg(request.resource.data.organizationId);
-      allow update, delete: if isStaff()
+      allow update: if isStaff()
         && sameOrg(resource.data.organizationId)
         && sameOrg(request.resource.data.organizationId);
+      allow delete: if isStaff() && sameOrg(resource.data.organizationId);
     }
 
     // Trips -- staff manage all org trips. A driver may read/update only
