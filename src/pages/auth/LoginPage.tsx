@@ -13,7 +13,7 @@ interface LocationState {
 }
 
 export function LoginPage() {
-  const { status, login } = useAuth()
+  const { status, login, idleSignOut, clearIdleSignOut } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -57,6 +57,7 @@ export function LoginPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
+    clearIdleSignOut()
     if (!email.trim() || !password) {
       setError('Please enter both email and password.')
       return
@@ -158,6 +159,11 @@ export function LoginPage() {
           <h1 className="text-xl font-bold text-slate-900">Unified NEMT Operations Hub</h1>
           <p className="text-sm text-slate-500">Sign in to continue</p>
         </div>
+        {idleSignOut && (
+          <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+            You were signed out after a period of inactivity.
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">Email</label>

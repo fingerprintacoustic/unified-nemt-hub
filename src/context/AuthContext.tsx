@@ -23,6 +23,12 @@ export interface AuthContextValue {
   userRecord: UserRecord | null
   organization: OrganizationRecord | null
   isBooting: boolean
+  /** True if the last sign-out was this session's own idle timeout, not a
+   * deliberate click on "Sign out". LoginPage shows this once, then the
+   * caller should clear it via `clearIdleSignOut()` so it doesn't persist
+   * across a normal future sign-out. */
+  idleSignOut: boolean
+  clearIdleSignOut: () => void
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
 }
@@ -31,6 +37,15 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export const USE_AUTH_DEMO_MODE = 'You can run the app without Firebase configured yet.'
 
+/** Auto sign-out after this much inactivity while signed in -- a common
+ * technical safeguard for systems handling PHI-adjacent data (this app's
+ * trip data is tied to Medicaid/Medicare-funded medical transport). Not
+ * itself a compliance certification -- just closing a real gap the
+ * Compliance Readiness Brief flagged, independent of the HIPAA/BAA
+ * decision, which is a legal step this app doesn't decide. */
+const IDLE_TIMEOUT_MS = 20 * 60 * 1000
+const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart'] as const
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>(() =>
     hasFirebaseConfig() ? 'loading' : 'unconfigured',
@@ -38,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null)
   const [userRecord, setUserRecord] = useState<UserRecord | null>(null)
   const [organization, setOrganization] = useState<OrganizationRecord | null>(null)
+  const [idleSignOut, setIdleSignOut] = useState(false)
 
   const handleUser = useCallback((user: FirebaseUser | null) => {
     setFirebaseUser(user)
@@ -94,6 +110,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('unauthenticated')
   }, [])
 
+  const clearIdleSignOut = useCallback(() => setIdleSignOut(false), [])
+
+  // Auto sign-out after IDLE_TIMEOUT_MS of no mouse/keyboard/scroll/touch
+  // activity -- see IDLE_TIMEOUT_MS's own comment. Only active while
+  // actually signed in.
+  useEffect(() => {
+    if (status !== 'authenticated') return
+
+    let timer: ReturnType<typeof setTimeout>
+    const resetTimer = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        setIdleSignOut(true)
+        void logoutUser()
+      }, IDLE_TIMEOUT_MS)
+    }
+
+    resetTimer()
+    for (const event of ACTIVITY_EVENTS) window.addEventListener(event, resetTimer)
+    return () => {
+      clearTimeout(timer)
+      for (const event of ACTIVITY_EVENTS) window.removeEventListener(event, resetTimer)
+    }
+  }, [status, logoutUser])
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
@@ -101,10 +142,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userRecord,
       organization,
       isBooting: status === 'loading',
+      idleSignOut,
+      clearIdleSignOut,
       login,
       logout: logoutUser,
     }),
-    [status, firebaseUser, userRecord, organization, login, logoutUser],
+    [status, firebaseUser, userRecord, organization, idleSignOut, clearIdleSignOut, login, logoutUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

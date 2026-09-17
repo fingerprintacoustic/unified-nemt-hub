@@ -451,6 +451,35 @@ Sienna, TEST123), and one COMPLETED trip with a $45 fare / broker
   `name` ("Test Org (seed check)") instead of the raw doc id. No rules
   change needed — `organizations/{orgId}` was already readable by same-org
   members.
+- **Client confirmed (2026-09-17, user's own words) their trips are real
+  Medicaid/Medicare-funded** — moves the HIPAA business-associate question
+  from "likely" to the working assumption for this app. Prompted closing
+  two of the Compliance Readiness Brief's pure-engineering gaps (neither
+  needed a client/legal answer):
+  - **Server-side password policy enforced** on `nemt-hub-dev`'s Firebase
+    Auth config via `scripts/set-password-policy.mjs` (12+ characters,
+    upper/lower/numeric/symbol required, `ENFORCE` mode). This is enforced
+    by Google's servers on every sign-up/password-change, not just client
+    validation — verified with a direct Admin SDK call that a 12-character
+    all-lowercase password is now rejected. `forceUpgradeOnSignin: true`
+    means existing weak passwords get a forced reset prompt on next
+    sign-in, not an immediate lockout; reset the seeded ADMIN test
+    account's password to a compliant one so this session's own access
+    wasn't broken by it.
+  - **20-minute idle auto-logout** — `AuthContext`'s new
+    `IDLE_TIMEOUT_MS`/activity-listener effect signs a user out after 20
+    minutes with no mouse/keyboard/scroll/touch activity, and the login
+    screen shows "You were signed out after a period of inactivity."
+    Verified live by temporarily shortening the timeout to 5 seconds,
+    confirming the auto-logout and message, then restoring 20 minutes
+    before committing.
+  - The **Compliance Readiness Brief artifact was NOT yet updated** to
+    move these two items from "open" to "in place" — do that before
+    handing it to the client/counsel again.
+  - **Still not something engineering can resolve:** the actual BAA
+    execution and the business-associate determination itself remain the
+    client's (ideally with counsel) to make — this session only closed
+    the safeguards that didn't need their answer.
 - This machine's Firebase CLI needed `firebase login:use musiiwajoseph@gmail.com`
   to reach `nemt-hub-dev` (that account owns it, not `fingerprintacoustic@gmail.com`).
   Set per-directory via `.firebaserc`/CLI default; no ownership changes made.
@@ -522,12 +551,22 @@ Sienna, TEST123), and one COMPLETED trip with a $45 fare / broker
   - `docs/fix-readme-code-fence` superseded — its fix (plus a full
     README punctuation-corruption cleanup) landed directly on `main`;
     the stale branch is safe to delete.
+- **User confirmed (2026-09-17) the client's trips are real
+  Medicaid/Medicare-funded** — treat the HIPAA/BAA question as a real,
+  not hypothetical, gate going forward. Closed two more engineering-only
+  safeguards from the Compliance Readiness Brief in response: a
+  server-side password policy (12+ chars, complexity, enforced by
+  Firebase's own servers) and a 20-minute idle auto-logout. **The brief
+  artifact itself still needs a republish** to move those two items from
+  "open" to "in place" before it goes to the client/counsel.
 - **Still genuinely stuck on a client relationship existing:**
   - Which billing system(s)/broker portal(s) to build a real adapter for
     (Phase 10) — draft outreach message was written, not yet sent to an
     actual client.
-  - HIPAA/BAA posture — a legal/contractual decision (Phase 11); brief
-    is ready to hand to counsel once there's an engagement.
+  - The actual BAA execution and business-associate determination — a
+    legal/contractual decision only the client (ideally with counsel) can
+    make (Phase 11); the brief is ready to hand over once there's an
+    engagement.
   - Whether `nemt-hub-dev` becomes the real production Firebase project
     or a separate one gets created, plus a custom domain + DNS owner
     (Phase 12).
