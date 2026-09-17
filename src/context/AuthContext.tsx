@@ -11,6 +11,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { hasFirebaseConfig } from '../config/env'
 import { getFirebaseAuth, getFirestore } from '../lib/firebase'
 import { loginWithEmail, logout, type FirebaseUser } from '../services/auth'
+import { observeOrganization } from '../services/organizations'
 import { observeUserRecord } from '../services/users'
 import type { OrganizationRecord, UserRecord } from '../types'
 
@@ -36,10 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null)
   const [userRecord, setUserRecord] = useState<UserRecord | null>(null)
+  const [organization, setOrganization] = useState<OrganizationRecord | null>(null)
 
   const handleUser = useCallback((user: FirebaseUser | null) => {
     setFirebaseUser(user)
     setUserRecord(null)
+    setOrganization(null)
     if (user) {
       // Observe the Firestore user record for the signed-in UID..
       const unsubscribe = observeUserRecord(
@@ -70,7 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe?.()
   }, [handleUser])
 
-  const organization: OrganizationRecord | null = null // resolved via /organizations/{orgId} in a later phase
+  useEffect(() => {
+    if (!userRecord?.organizationId) return
+    return observeOrganization(userRecord.organizationId, setOrganization, (error) => {
+      console.error('Failed to load organization record:', error)
+      setOrganization(null)
+    })
+  }, [userRecord?.organizationId])
 
   const login = useCallback(async (email: string, password: string) => {
     const user = await loginWithEmail(email, password)
@@ -81,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await logout()
     setFirebaseUser(null)
     setUserRecord(null)
+    setOrganization(null)
     setStatus('unauthenticated')
   }, [])
 

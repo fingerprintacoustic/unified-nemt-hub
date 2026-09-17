@@ -1,6 +1,7 @@
 import {
   browserLocalPersistence,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
   signOut,
@@ -27,6 +28,18 @@ export async function loginWithEmail(email: string, password: string): Promise<U
 export async function logout(): Promise<void> {
   const auth = getFirebaseAuth()
   await signOut(auth)
+}
+
+/**
+ * Sends Firebase Auth's own hosted password-reset email -- no third-party
+ * mail vendor needed, works out of the box from Firebase's own sending
+ * infrastructure. Callers should show the same generic confirmation
+ * regardless of success or failure (including auth/user-not-found) so this
+ * can't be used to enumerate which emails have accounts.
+ */
+export async function sendPasswordReset(email: string): Promise<void> {
+  const auth = getFirebaseAuth()
+  await sendPasswordResetEmail(auth, email.trim())
 }
 
 /**

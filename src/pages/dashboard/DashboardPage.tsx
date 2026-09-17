@@ -32,7 +32,7 @@ const toneClasses: Record<SummaryCard['tone'], string> = {
 }
 
 export function DashboardPage() {
-  const { user, userRecord } = useAuth()
+  const { user, userRecord, organization } = useAuth()
   const isStaff = isStaffRole(userRecord?.role)
   const role = userRecord?.role
 
@@ -122,7 +122,9 @@ export function DashboardPage() {
               {userRecord?.organizationId && (
                 <p className="flex items-center justify-between">
                   <span className="text-slate-500">Organization</span>
-                  <span className="max-w-[55%] truncate font-medium text-slate-700">{userRecord.organizationId}</span>
+                  <span className="max-w-[55%] truncate font-medium text-slate-700">
+                    {organization?.name ?? userRecord.organizationId}
+                  </span>
                 </p>
               )}
             </div>

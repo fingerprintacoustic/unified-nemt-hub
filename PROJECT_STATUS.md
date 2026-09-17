@@ -415,19 +415,42 @@ Sienna, TEST123), and one COMPLETED trip with a $45 fare / broker
   Add the production domain's referrer once one exists, or geocoding will
   fail there (falls back to nothing — the UI will show a "could not
   verify" error, not manual entry, since the key IS configured).
-- No self-service password reset / profile update flow in the app (admin
-  invite still ends with a printed reset link, delivered manually).
-  `scripts/set-user-password.mjs` is a dev-only helper for setting a known
-  password on a test account.
-- No email/invite delivery wired (Resend etc.) — new-user creation prints a
-  link rather than emailing one.
+- **Self-service password reset shipped (2026-09-17).** "Forgot password?"
+  on the sign-in screen (`sendPasswordReset()` in `src/services/auth.ts`)
+  uses Firebase Auth's own hosted email delivery — no third-party mail
+  vendor needed. Confirmation message is identical whether or not the
+  email has an account, so it can't be used to enumerate registered
+  users. Verified live: a real account got the same generic confirmation
+  as a made-up address. `scripts/set-user-password.mjs` remains as a
+  dev-only helper for setting a known password on a test account directly
+  (bypassing email) when that's more convenient for testing.
+- No in-app "invite a new user by email" flow yet — `scripts/create-user.mjs`
+  (an Admin SDK script run by an operator) still prints a reset link to
+  deliver manually, rather than the app itself sending an invite. Building
+  a real in-app invite would need a Cloud Function (browsers can't create
+  Auth accounts for someone else) — a bigger, separate feature, not
+  bundled into this session's password-reset fix.
 - `firestore.rules` now compiles with **0 warnings** (was 1, the
   `auditLogs` `diff(self)`/`.keys()` bug — fixed and verified this
   session, see Phase 11 above).
-- `docs/fix-readme-code-fence` (`2d2b70c`) pushed, not yet merged to `main`.
-- `AuthContext` still hardcodes `organization = null`; `/organizations/{orgId}`
-  is not yet loaded on sign-in (role/org id resolve fine via `userRecord`;
-  the org record itself isn't surfaced in context).
+- **`docs/fix-readme-code-fence` (`2d2b70c`) is now superseded, not
+  merged.** That branch's only real payload (closing an unterminated code
+  fence in the README) has been cherry-picked directly into `main` along
+  with a full pass fixing pervasive em-dash/punctuation corruption found
+  throughout `README.md` while looking at that fence (likely from some
+  past destructive find-replace — every `—` in the file had been stripped
+  to spaces/commas). Merging the branch as-is would have been destructive:
+  it was cut before `PROJECT_STATUS.md`, `.firebaserc`, and several
+  `.gitignore`/`.env.example` entries existed, so a literal merge would
+  have deleted all of that. The branch itself is safe to delete whenever
+  you'd like — nothing on it is still needed.
+- **`AuthContext.organization` is now loaded (2026-09-17)** — a new
+  `src/services/organizations.ts` (`observeOrganization`) subscribes to
+  `/organizations/{orgId}` once `userRecord.organizationId` resolves,
+  cleared on sign-out. `DashboardPage` now shows the organization's real
+  `name` ("Test Org (seed check)") instead of the raw doc id. No rules
+  change needed — `organizations/{orgId}` was already readable by same-org
+  members.
 - This machine's Firebase CLI needed `firebase login:use musiiwajoseph@gmail.com`
   to reach `nemt-hub-dev` (that account owns it, not `fingerprintacoustic@gmail.com`).
   Set per-directory via `.firebaserc`/CLI default; no ownership changes made.
@@ -484,14 +507,33 @@ Sienna, TEST123), and one COMPLETED trip with a $45 fare / broker
   - Phase 8 (Telematics) moved from DEFERRED to **PARTIAL** — manual
     status-entry scaffolding built and verified as a real DISPATCHER
     account; see Phase 8 detail above. No rules change needed.
-- **Next / still open, needs your or the client's input:**
-  - Which billing system(s)/broker portal(s) the client actually uses, to
-    replace the CSV export with a real adapter (Phase 10) — question sent,
-    awaiting reply.
-  - HIPAA/BAA posture — a legal/contractual decision, not engineering
-    (Phase 11); brief handed off for counsel review.
-  - Whether `nemt-hub-dev` is the real production Firebase project or a
-    separate one gets created, plus a custom domain + DNS owner (Phase 12).
-  - A real Verizon Connect account, to replace Phase 8's manual entry with
-    a live sync; add the eventual production domain to the Maps key's
-    referrer allowlist.
+- **Important context (2026-09-17): the client has not been pitched yet,
+  and pricing hasn't been agreed.** Everything above framed as "waiting on
+  the client's answer" is really waiting on a client relationship that
+  doesn't formally exist yet — nemt-hub-dev is still a demo/prototype
+  project, not a live customer deployment. That doesn't block engineering
+  work that doesn't need a real client answer (see below), but it does
+  mean Phase 10/11/12's remaining vendor-specific/legal items are stuck
+  until there's an actual engagement to ask those questions of.
+- **Engineering gaps closed this session, since they didn't need a
+  client answer:**
+  - Self-service password reset (see "Open decisions" above).
+  - `AuthContext.organization` now loads the real org record.
+  - `docs/fix-readme-code-fence` superseded — its fix (plus a full
+    README punctuation-corruption cleanup) landed directly on `main`;
+    the stale branch is safe to delete.
+- **Still genuinely stuck on a client relationship existing:**
+  - Which billing system(s)/broker portal(s) to build a real adapter for
+    (Phase 10) — draft outreach message was written, not yet sent to an
+    actual client.
+  - HIPAA/BAA posture — a legal/contractual decision (Phase 11); brief
+    is ready to hand to counsel once there's an engagement.
+  - Whether `nemt-hub-dev` becomes the real production Firebase project
+    or a separate one gets created, plus a custom domain + DNS owner
+    (Phase 12).
+  - A real Verizon Connect account, to replace Phase 8's manual entry
+    with a live sync; add the eventual production domain to the Maps
+    key's referrer allowlist.
+  - In-app user-invite-by-email (would need a Cloud Function) — noted
+    above as a separate, larger feature from this session's password
+    reset work.
