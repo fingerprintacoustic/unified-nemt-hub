@@ -168,6 +168,10 @@ service cloud.firestore {
     // Trips -- staff manage all org trips. A driver may read/update only
     // trips assigned to them (TripRecord.driverId), and may not reassign a
     // trip to a different driver, vehicle, or organization via update.
+    // vehicleId is compared with get(default) because it's optional on
+    // TripRecord -- a trip can have a driver assigned before a vehicle
+    // does, and a direct == on a field absent on both sides denied the
+    // whole branch instead of treating "still unset" as unchanged.
     match /trips/{tripId} {
       allow read: if isActiveUser() && (
         (isStaff() && sameOrg(resource.data.organizationId))
@@ -186,7 +190,7 @@ service cloud.firestore {
           && resource.data.driverId == request.auth.uid
           && request.resource.data.driverId == resource.data.driverId
           && request.resource.data.organizationId == resource.data.organizationId
-          && request.resource.data.vehicleId == resource.data.vehicleId
+          && request.resource.data.get('vehicleId', null) == resource.data.get('vehicleId', null)
         )
       );
 
