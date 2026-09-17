@@ -20,7 +20,7 @@ _Last updated: 2026-09-17_
 | 8 | Telematics | **PARTIAL** — manual/scaffolding only; real Verizon Connect sync still needs a provider account |
 | 9 | Payroll | **DONE** (manual pay entry; no auto-calculation) |
 | 10 | Billing / reports | **DONE** (CSV export only; no vendor sync yet) |
-| 11 | Audit / compliance | **PARTIAL** — audit trail wired + viewer built; HIPAA/BAA compliance hardening not started |
+| 11 | Audit / compliance | **PARTIAL** — audit trail wired + viewer built; password policy + idle timeout hardened; BAA execution/determination still the client's call |
 | 12 | Production deploy | **PARTIAL** — live on Firebase Hosting; no custom domain yet |
 
 ## Detail
