@@ -281,6 +281,28 @@ is a real compensation decision this app doesn't make.
 
 ### Phases 10–12: NOT STARTED
 
+**Before starting Phase 10 (Billing/reports): the client has their own
+existing billing system and other existing software they want this app
+to integrate with** (2026-09-16, user's own words — exact system names
+not yet given). This must shape Phase 10's scope: don't build a from-
+scratch billing/invoicing engine as the default. Two things already work
+in this app's favor:
+- The README already designed for this — "Vendor adapters: each
+  third-party system ... gets an adapter module behind a stable internal
+  interface — swapping a vendor replaces only its adapter, not the app"
+  (see `IntegrationsPage.tsx` / README "Future integration architecture").
+- Payroll (Phase 9) already landed on the shape this kind of integration
+  usually needs anyway: track the data in this app, manual/CSV export at
+  the boundary, rather than trying to be the system of record. Billing
+  likely wants the same pattern (trip/fare data lives here; export or
+  adapter pushes it to their real billing system) rather than a
+  competing invoicing engine.
+- **Open, needs the client's actual answer before scoping Phase 10:**
+  which billing system(s) (QuickBooks? A specific NEMT broker portal?
+  Something else?) and which "other existing software" — same kind of
+  concrete-vendor question that shaped Phase 4's Maps key and Phase 8's
+  telematics deferral.
+
 ## Open decisions / known gaps
 
 - **Google Maps key referrer list is dev-only.** Only `http://localhost:5173/*`
