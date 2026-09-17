@@ -236,6 +236,45 @@ export interface PayrollPeriodRecord {
   approvedAt?: Timestamp
 }
 
+export type BillingPeriodStatus = 'DRAFT' | 'FINALIZED' | 'EXPORTED'
+
+/** One billed trip, snapshotted at finalize time so a later edit or deletion
+ * of the source trip doesn't change billing history already sent out. */
+export interface BillingLineItem {
+  tripId: string
+  scheduledPickupAt: Timestamp
+  originAddress: string
+  destinationAddress: string
+  brokerId?: string
+  fare: Money
+}
+
+/**
+ * A billing period is derived, not manually entered: line items and the
+ * total come directly from each trip's existing `fare` (already set at
+ * dispatch time), the same way Payroll's `tripsCompleted` figure is derived
+ * -- this app doesn't invent a rate or fee calculation of its own. While
+ * DRAFT, the matching trips are computed live in the UI; `finalize` snapshots
+ * them into `lineItems`/`totalAmount` and locks the period so the numbers
+ * sent to the client's real billing system don't shift under them.
+ */
+export interface BillingPeriodRecord {
+  periodId: string
+  organizationId: string
+  startDate: Timestamp
+  endDate: Timestamp
+  /** Optional filter to one broker's trips; unset bills every broker. */
+  brokerId?: string
+  status: BillingPeriodStatus
+  lineItems: BillingLineItem[]
+  totalAmount: Money
+  createdBy: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  finalizedBy?: string
+  finalizedAt?: Timestamp
+}
+
 export interface AuditLogRecord {
   logId: string
   organizationId: string

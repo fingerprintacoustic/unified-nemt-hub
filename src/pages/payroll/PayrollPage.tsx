@@ -11,6 +11,7 @@ import { TextField } from '../../components/ui/TextField'
 import { useAuth } from '../../context/AuthContext'
 import { toUserMessage } from '../../lib/errors'
 import { formatDate } from '../../lib/format'
+import { writeAuditLog } from '../../services/audit'
 import {
   approvePayrollPeriod,
   createPayrollPeriod,
@@ -192,6 +193,17 @@ export function PayrollPage() {
     try {
       await handleSaveEntries()
       await approvePayrollPeriod(detail.periodId, userRecord.uid)
+      if (organizationId) {
+        void writeAuditLog({
+          organizationId,
+          action: 'payroll.approved',
+          actorId: userRecord.uid,
+          actorRole: userRecord.role,
+          targetCollection: 'payrollPeriods',
+          targetId: detail.periodId,
+          details: { total: periodTotal(detail) },
+        })
+      }
     } catch (error) {
       setActionError(toUserMessage(error, 'Could not approve this period.'))
     } finally {
@@ -249,6 +261,16 @@ export function PayrollPage() {
     setActionError(null)
     try {
       await deletePayrollPeriod(periodId)
+      if (userRecord && organizationId) {
+        void writeAuditLog({
+          organizationId,
+          action: 'payroll.deleted',
+          actorId: userRecord.uid,
+          actorRole: userRecord.role,
+          targetCollection: 'payrollPeriods',
+          targetId: periodId,
+        })
+      }
       setConfirmDeleteId(null)
       if (detailId === periodId) setDetailId(null)
     } catch (error) {

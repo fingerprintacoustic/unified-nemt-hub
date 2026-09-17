@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '../components/auth/ProtectedRoute'
 import { AppLayout } from '../components/layout/AppLayout'
 import { DriverLayout } from '../components/layout/DriverLayout'
+import { AuditPage } from '../pages/audit/AuditPage'
 import { LoginPage } from '../pages/auth/LoginPage'
 import { DashboardPage } from '../pages/dashboard/DashboardPage'
 import { DispatchPage } from '../pages/dispatch/DispatchPage'
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
       { path: 'billing', element: <ProtectedRoute minRole="MANAGER"><BillingPage /></ProtectedRoute> },
       { path: 'reports', element: <ProtectedRoute minRole="MANAGER"><ReportsPage /></ProtectedRoute> },
       { path: 'users', element: <ProtectedRoute minRole="MANAGER"><UsersPage /></ProtectedRoute> },
+      { path: 'audit', element: <ProtectedRoute minRole="ADMIN"><AuditPage /></ProtectedRoute> },
       { path: 'integrations', element: <ProtectedRoute minRole="ADMIN"><IntegrationsPage /></ProtectedRoute> },
       { path: 'settings', element: <ProtectedRoute minRole="ADMIN"><SettingsPage /></ProtectedRoute> },
     ],

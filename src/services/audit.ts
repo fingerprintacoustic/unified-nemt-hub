@@ -1,6 +1,6 @@
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { addDoc, collection, onSnapshot, query, serverTimestamp, where, type QuerySnapshot } from 'firebase/firestore'
 import { getFirestore } from '../lib/firebase'
-import type { UserRole } from '../types'
+import type { AuditLogRecord, UserRole } from '../types'
 
 const AUDIT_COLLECTION = 'auditLogs'
 
@@ -35,4 +35,23 @@ export async function writeAuditLog(input: AuditInput): Promise<void> {
     // Audit failures must never block the primary operation..
     console.error('Failed to write audit log:', error)
   }
+}
+
+/** Live list of every audit entry in an organization, most recent first.
+ * Sorted client-side, like the other observeOrg* helpers, so this doesn't
+ * need a new composite Firestore index. */
+export function observeOrgAuditLogs(
+  organizationId: string,
+  onData: (records: AuditLogRecord[]) => void,
+  onError?: (error: unknown) => void,
+): () => void {
+  const q = query(collection(getFirestore(), AUDIT_COLLECTION), where('organizationId', '==', organizationId))
+  return onSnapshot(q, {
+    next: (snapshot: QuerySnapshot) => {
+      const records = snapshot.docs.map((d) => ({ logId: d.id, ...d.data() }) as AuditLogRecord)
+      records.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())
+      onData(records)
+    },
+    error: onError,
+  })
 }

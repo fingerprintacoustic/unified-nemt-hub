@@ -9,6 +9,7 @@ import { hasMinimumRole } from '../../config/roles'
 import { useAuth } from '../../context/AuthContext'
 import { toUserMessage } from '../../lib/errors'
 import { formatRole } from '../../lib/format'
+import { writeAuditLog } from '../../services/audit'
 import { observeOrgUsers, setUserStatus, updateUserRole } from '../../services/users'
 import type { UserRecord, UserRole, UserStatus } from '../../types'
 
@@ -56,6 +57,17 @@ export function UsersPage() {
     setPendingUid(uid)
     try {
       await updateUserRole(uid, role)
+      if (userRecord && organizationId) {
+        void writeAuditLog({
+          organizationId,
+          action: 'user.role_changed',
+          actorId: userRecord.uid,
+          actorRole: userRecord.role,
+          targetCollection: 'users',
+          targetId: uid,
+          details: { role },
+        })
+      }
     } catch (error) {
       setActionError(toUserMessage(error, 'Could not update that user’s role.'))
     } finally {
@@ -69,6 +81,17 @@ export function UsersPage() {
     setPendingUid(uid)
     try {
       await setUserStatus(uid, next)
+      if (userRecord && organizationId) {
+        void writeAuditLog({
+          organizationId,
+          action: 'user.status_changed',
+          actorId: userRecord.uid,
+          actorRole: userRecord.role,
+          targetCollection: 'users',
+          targetId: uid,
+          details: { status: next },
+        })
+      }
     } catch (error) {
       setActionError(toUserMessage(error, 'Could not update that user’s status.'))
     } finally {

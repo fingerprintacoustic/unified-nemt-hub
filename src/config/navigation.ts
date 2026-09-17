@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   CreditCard,
   Gauge,
+  History,
   Home,
   Plug,
   Settings,
@@ -37,6 +38,7 @@ export const MAIN_NAV: readonly NavItem[] = [
   { label: 'Billing', href: '/billing', icon: CreditCard, minRole: 'MANAGER' },
   { label: 'Reports', href: '/reports', icon: BarChart3, minRole: 'MANAGER' },
   { label: 'Users', href: '/users', icon: UserCog, minRole: 'MANAGER' },
+  { label: 'Audit trail', href: '/audit', icon: History, minRole: 'ADMIN' },
   { label: 'Integrations', href: '/integrations', icon: Plug, minRole: 'ADMIN' },
   { label: 'Settings', href: '/settings', icon: Settings, minRole: 'ADMIN' },
  ] as const

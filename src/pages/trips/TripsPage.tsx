@@ -13,6 +13,7 @@ import { geocodeAddress } from '../../services/geocoding'
 import { toUserMessage } from '../../lib/errors'
 import { observeOrgDrivers } from '../../services/drivers'
 import { observeOrgVehicles } from '../../services/vehicles'
+import { writeAuditLog } from '../../services/audit'
 import {
   createTrip,
   deleteTrip,
@@ -360,6 +361,16 @@ export function TripsPage() {
     setPendingId(tripId)
     try {
       await deleteTrip(tripId)
+      if (userRecord && organizationId) {
+        void writeAuditLog({
+          organizationId,
+          action: 'trip.deleted',
+          actorId: userRecord.uid,
+          actorRole: userRecord.role,
+          targetCollection: 'trips',
+          targetId: tripId,
+        })
+      }
       setConfirmDeleteId(null)
     } catch (error) {
       setActionError(toUserMessage(error, 'Could not delete that trip.'))

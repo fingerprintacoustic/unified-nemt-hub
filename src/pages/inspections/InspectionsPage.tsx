@@ -9,6 +9,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { useAuth } from '../../context/AuthContext'
 import { toUserMessage } from '../../lib/errors'
 import { formatDateTime } from '../../lib/format'
+import { writeAuditLog } from '../../services/audit'
 import {
   deleteInspection,
   observeOrgInspections,
@@ -79,6 +80,16 @@ export function InspectionsPage() {
     setPendingId(inspection.inspectionId)
     try {
       await reviewInspection(inspection.inspectionId, status, userRecord.uid)
+      if (organizationId) {
+        void writeAuditLog({
+          organizationId,
+          action: status === 'APPROVED' ? 'inspection.approved' : 'inspection.flagged',
+          actorId: userRecord.uid,
+          actorRole: userRecord.role,
+          targetCollection: 'inspections',
+          targetId: inspection.inspectionId,
+        })
+      }
       if (status === 'APPROVED') {
         // Vehicle writes are staff-only in firestore.rules -- a driver
         // submitting an inspection can't bump this themself, so it happens

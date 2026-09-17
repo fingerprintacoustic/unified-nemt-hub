@@ -10,6 +10,7 @@ import { TextField } from '../../components/ui/TextField'
 import { useAuth } from '../../context/AuthContext'
 import { toUserMessage } from '../../lib/errors'
 import { formatDate } from '../../lib/format'
+import { writeAuditLog } from '../../services/audit'
 import {
   createVehicle,
   deleteVehicle,
@@ -178,6 +179,16 @@ export function VehiclesPage() {
     setPendingId(vehicleId)
     try {
       await deleteVehicle(vehicleId)
+      if (userRecord && organizationId) {
+        void writeAuditLog({
+          organizationId,
+          action: 'vehicle.deleted',
+          actorId: userRecord.uid,
+          actorRole: userRecord.role,
+          targetCollection: 'vehicles',
+          targetId: vehicleId,
+        })
+      }
       setConfirmDeleteId(null)
     } catch (error) {
       setActionError(toUserMessage(error, 'Could not delete that vehicle.'))

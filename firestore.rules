@@ -260,6 +260,22 @@ service cloud.firestore {
       allow delete: if isAdmin() && sameOrg(resource.data.organizationId);
     }
 
+    // Billing periods -- MANAGER and above only, same role boundary as
+    // payrollPeriods (README: "MANAGER -- payroll, billing, reports"). Line
+    // items/total are derived from trips' existing fare data by the app, not
+    // computed by these rules -- see BillingPeriodRecord's own comment.
+    // Delete is ADMIN-only, matching payrollPeriods' convention.
+    match /billingPeriods/{periodId} {
+      allow read: if isManagerOrAbove() && sameOrg(resource.data.organizationId);
+      allow create: if isManagerOrAbove()
+        && sameOrg(request.resource.data.organizationId)
+        && request.resource.data.status == 'DRAFT';
+      allow update: if isManagerOrAbove()
+        && sameOrg(resource.data.organizationId)
+        && sameOrg(request.resource.data.organizationId);
+      allow delete: if isAdmin() && sameOrg(resource.data.organizationId);
+    }
+
     // Audit logs -- staff may read their org's audit trail. Writes are
     // intentionally restricted: create requires the same
     // organization/actor/timestamp integrity checks as before (matching
@@ -272,7 +288,7 @@ service cloud.firestore {
         && request.resource.data.actorId == request.auth.uid
         && request.resource.data.actorRole == callerRole()
         && request.resource.data.createdAt == request.time
-        && request.resource.data.diff(request.resource.data).keys().hasOnly(
+        && request.resource.data.keys().hasOnly(
           ['action', 'actorId', 'actorRole', 'organizationId', 'targetCollection', 'targetId', 'details', 'createdAt']
         );
       allow update, delete: if false;

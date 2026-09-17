@@ -11,6 +11,7 @@ import { TextField } from '../../components/ui/TextField'
 import { useAuth } from '../../context/AuthContext'
 import { toUserMessage } from '../../lib/errors'
 import { formatDate } from '../../lib/format'
+import { writeAuditLog } from '../../services/audit'
 import {
   createDriver,
   deleteDriver,
@@ -237,6 +238,16 @@ export function DriversPage() {
     setPendingId(driverId)
     try {
       await deleteDriver(driverId)
+      if (userRecord && organizationId) {
+        void writeAuditLog({
+          organizationId,
+          action: 'driver.deleted',
+          actorId: userRecord.uid,
+          actorRole: userRecord.role,
+          targetCollection: 'drivers',
+          targetId: driverId,
+        })
+      }
       setConfirmDeleteId(null)
     } catch (error) {
       setActionError(toUserMessage(error, 'Could not delete that driver.'))

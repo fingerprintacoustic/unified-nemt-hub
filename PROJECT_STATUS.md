@@ -4,7 +4,7 @@ Status log for the Unified NEMT Operations Hub. **Read this first at the start
 of every session. Update it at the end of every session and whenever a
 phase or task completes.** Keep it short — this is a log, not documentation.
 
-_Last updated: 2026-09-16_
+_Last updated: 2026-09-17_
 
 ## Roadmap (12 phases)
 
@@ -19,9 +19,9 @@ _Last updated: 2026-09-16_
 | 7 | Navigation / comms | **DONE** (navigation only; comms deferred) |
 | 8 | Telematics | **DEFERRED** — no real provider account yet (see below) |
 | 9 | Payroll | **DONE** (manual pay entry; no auto-calculation) |
-| 10 | Billing / reports | NOT STARTED |
-| 11 | Audit / compliance | NOT STARTED |
-| 12 | Production deploy | NOT STARTED |
+| 10 | Billing / reports | **DONE** (CSV export only; no vendor sync yet) |
+| 11 | Audit / compliance | **PARTIAL** — audit trail wired + viewer built; HIPAA/BAA compliance hardening not started |
+| 12 | Production deploy | **PARTIAL** — live on Firebase Hosting; no custom domain yet |
 
 ## Detail
 
@@ -279,29 +279,111 @@ is a real compensation decision this app doesn't make.
   text framed payroll as a staff/management workflow — approvals,
   export — not driver self-service; no such view was requested).
 
-### Phases 10–12: NOT STARTED
+### Phase 10 — Billing / reports: DONE (CSV export; no vendor sync)
 
-**Before starting Phase 10 (Billing/reports): the client has their own
-existing billing system and other existing software they want this app
-to integrate with** (2026-09-16, user's own words — exact system names
-not yet given). This must shape Phase 10's scope: don't build a from-
-scratch billing/invoicing engine as the default. Two things already work
-in this app's favor:
-- The README already designed for this — "Vendor adapters: each
-  third-party system ... gets an adapter module behind a stable internal
-  interface — swapping a vendor replaces only its adapter, not the app"
-  (see `IntegrationsPage.tsx` / README "Future integration architecture").
-- Payroll (Phase 9) already landed on the shape this kind of integration
-  usually needs anyway: track the data in this app, manual/CSV export at
-  the boundary, rather than trying to be the system of record. Billing
-  likely wants the same pattern (trip/fare data lives here; export or
-  adapter pushes it to their real billing system) rather than a
-  competing invoicing engine.
-- **Open, needs the client's actual answer before scoping Phase 10:**
-  which billing system(s) (QuickBooks? A specific NEMT broker portal?
-  Something else?) and which "other existing software" — same kind of
-  concrete-vendor question that shaped Phase 4's Maps key and Phase 8's
-  telematics deferral.
+Client confirmed (2026-09-16) they have their own existing billing system
+and other software to integrate with, exact names not yet given. Built to
+the same safe default used for Payroll rather than guessing a vendor:
+trip/fare data already in the app, exported at the boundary — no invented
+formula, no invented API integration.
+
+- `src/types/index.ts`: `BillingPeriodRecord` (status DRAFT/FINALIZED/
+  EXPORTED), `BillingLineItem[]` snapshotted at finalize time so a later
+  trip edit/delete can't change numbers already sent out. `totalAmount`
+  and every line item's `fare` come directly from `TripRecord.fare` —
+  this app computes nothing.
+- `firestore.rules`: new `billingPeriods` match block, `isManagerOrAbove()`
+  gated (README: "MANAGER -- payroll, billing, reports"), same shape as
+  `payrollPeriods` (create requires DRAFT, delete ADMIN-only).
+- `src/services/billing.ts` / `src/pages/billing/BillingPage.tsx`: create
+  a period (date range + optional broker-ID filter, matching the free-text
+  `brokerId` field trips already have); while DRAFT, a live preview of
+  every COMPLETED trip with a fare that matches; Finalize locks the
+  snapshot; Export CSV (broker portal / QuickBooks import shape: trip id,
+  date, origin, destination, broker, fare) marks it EXPORTED.
+- `src/pages/reports/ReportsPage.tsx`: read-only dashboard (date-range
+  filtered) over trips/vehicles/inspections already in the system — trip
+  volume by status, completion rate, fared revenue, fleet utilization,
+  inspection flag rate. No new collection, no new rules; reuses existing
+  `isStaff()` reads.
+- **Verified with real MANAGER/DISPATCHER accounts** (new test users this
+  session, see below): MANAGER created a real driver/vehicle/COMPLETED
+  trip with a $45 fare and broker "BrokerA", saw it appear live in the
+  Reports dashboard and in a new Billing period's DRAFT preview,
+  finalized it (locked the $45 snapshot), exported CSV (flipped to
+  EXPORTED). DISPATCHER was blocked from `/billing` and `/reports` by
+  both the route guard and a direct `403` on a `billingPeriods` query —
+  rules-level, not just UI.
+- **Not built** (deferred until the client names a real system): a live
+  QuickBooks/broker-portal API sync. CSV export is the integration
+  boundary for now, per the README's adapter architecture — swapping it
+  for a real adapter later doesn't require touching this UI.
+
+### Phase 11 — Audit / compliance: PARTIAL (engineering half done)
+
+- Wired the existing (previously unused) `writeAuditLog()` helper into
+  every significant mutation: user role/status changes, driver/vehicle/
+  trip deletes, inspection approve/flag, payroll approve/delete, billing
+  finalize/delete. Best-effort/fail-safe by design — an audit-write
+  failure never blocks the real action.
+- New `src/pages/audit/AuditPage.tsx` (`/audit`, ADMIN-only in the UI —
+  stricter than the rules, which allow any staff role to read, matching
+  the existing drivers/vehicles delete-button convention) — searchable
+  table of every entry (when, action, actor + role, target, details).
+- **Real `firestore.rules` bug found and fixed this session (with your
+  go-ahead), same day:** the `auditLogs` create rule's key-whitelist
+  check used `request.resource.data.diff(request.resource.data).keys()`
+  — `.diff()` returns a `MapDiff`, which has no `.keys()` method (only
+  `addedKeys()`/`removedKeys()`/`changedKeys()`/`affectedKeys()`). This
+  was the exact line already flagged by a compiler warning on every
+  prior deploy, previously assumed harmless ("does not grant extra
+  access") — that assumption was wrong and untested, because nothing
+  called `writeAuditLog` before this session. In practice it made the
+  *entire* create rule always deny: every audit write in the app's
+  history had been silently failing. Fixed by checking the document's
+  own keys directly (`request.resource.data.keys().hasOnly([...])`)
+  instead of a self-diff. Redeployed — **compiler warning is now gone
+  entirely** (0 warnings, down from the 1 documented below). Verified
+  both directions via isolated REST calls (Commit API with a
+  `REQUEST_TIME` server-value transform, so `createdAt` genuinely
+  resolves to `request.time` like the app's `serverTimestamp()` does):
+  a legitimate whitelisted write now succeeds (`200`), and the same
+  write with one extra field is still denied (`403`) — confirms the
+  whitelist itself still works, this wasn't a blanket loosening. Also
+  re-verified live in the app: finalizing a billing period now produces
+  a real entry in the Audit page.
+- **Not started:** HIPAA/BAA compliance hardening. The README already
+  states this app is not HIPAA certified, by design, for a later phase.
+  NEMT trip data is PHI-adjacent (addresses tied to medical
+  appointments); real compliance work here is a legal/contractual
+  question (a signed BAA with Google Cloud, data retention policy) more
+  than an engineering one — flagging back rather than assuming a
+  posture, same reasoning as the billing-vendor question.
+
+### Phase 12 — Production deploy: PARTIAL (live; no custom domain)
+
+- Built and deployed to Firebase Hosting on the existing `nemt-hub-dev`
+  project: **https://nemt-hub-dev.web.app** — verified live end-to-end
+  (sign-in, dashboard, Billing) on the real deployed URL, not just the
+  local dev server.
+- **Open, needs your/the client's input:** whether `nemt-hub-dev` is the
+  actual production project going forward (it currently also holds the
+  seeded test org/users) or a separate prod project gets created; a
+  custom domain and who controls its DNS (the Maps key's referrer
+  allowlist still only has `localhost:5173` — see below); Firestore
+  backup policy and budget alerts before calling this "production" for
+  real traffic.
+
+### New test accounts this session (nemt-hub-dev)
+
+Added to the same seeded test org (`vDaohHxTqECFmLVGBr4T`) to verify
+role boundaries the way Phase 9 did:
+- MANAGER: `fingerprintacoustic+nemt-dev-manager@gmail.com`
+- DISPATCHER: `fingerprintacoustic+nemt-dev-dispatcher@gmail.com`
+
+Also seeded one real driver (Jordan Rivera), one vehicle (2026 Toyota
+Sienna, TEST123), and one COMPLETED trip with a $45 fare / broker
+"BrokerA" (Sep 15, 2026) — this is what Reports/Billing show data for.
 
 ## Open decisions / known gaps
 
@@ -316,10 +398,9 @@ in this app's favor:
   password on a test account.
 - No email/invite delivery wired (Resend etc.) — new-user creation prints a
   link rather than emailing one.
-- `firestore.rules` still emits 1 pre-existing compiler warning (down from
-  2 — Phase 9 put `isManagerOrAbove()` to use): a `diff(self)` no-op on
-  the `auditLogs` key check that makes that key whitelist ineffective
-  (does not grant extra access).
+- `firestore.rules` now compiles with **0 warnings** (was 1, the
+  `auditLogs` `diff(self)`/`.keys()` bug — fixed and verified this
+  session, see Phase 11 above).
 - `docs/fix-readme-code-fence` (`2d2b70c`) pushed, not yet merged to `main`.
 - `AuthContext` still hardcodes `organization = null`; `/organizations/{orgId}`
   is not yet loaded on sign-in (role/org id resolve fine via `userRecord`;
@@ -343,13 +424,37 @@ in this app's favor:
   `fingerprintacoustic+nemt-dev-admin@gmail.com` (ADMIN, ACTIVE). Password was
   reset during Users-screen verification (2026-09-16) — change it again via
   `scripts/set-user-password.mjs` before relying on it.
+- MANAGER `fingerprintacoustic+nemt-dev-manager@gmail.com` and DISPATCHER
+  `fingerprintacoustic+nemt-dev-dispatcher@gmail.com` (both ACTIVE, added
+  2026-09-16 for Phase 10 verification) — passwords set directly via the
+  Admin SDK this session, not recorded here; reset via
+  `scripts/set-user-password.mjs` before reusing.
+- One driver (Jordan Rivera), one vehicle (2026 Toyota Sienna / TEST123),
+  one COMPLETED trip ($45 fare, broker "BrokerA", Sep 15 2026).
 
 ## Last worked on / next step
 
-- **Last:** Phase 8 (Telematics) scoped and deferred (no provider yet).
-  Phase 9 (Payroll) built and verified — manual pay entry, new schema +
-  `payrollPeriods` rules, tested against real MANAGER/DISPATCHER/ADMIN
-  accounts including a rules-level (not just UI) permission check.
-- **Next:** Phase 10 — Billing / reports. Also remember to add the
-  production domain to the Maps key's referrer list once one exists, and
-  to revisit Phase 8 once a real telematics provider is in place.
+- **Last (2026-09-16):** Phases 10–12 built out in one session, all
+  deliberately scoped to avoid inventing vendor integrations or financial
+  formulas ahead of the client's answers:
+  - Phase 10 (Billing/reports) DONE — CSV export + reporting dashboard,
+    same derive-don't-invent pattern as Payroll.
+  - Phase 11 (Audit/compliance) PARTIAL — audit trail wired end-to-end and
+    viewer built; found and fixed (with your go-ahead) a real
+    `firestore.rules` bug that had silently blocked every audit-log write
+    since the collection was added — see Phase 11 detail above for the
+    full root cause and the isolated REST verification (both a legitimate
+    write succeeding and a malicious extra-field write still being
+    denied).
+  - Phase 12 (Production deploy) PARTIAL — app is live at
+    **https://nemt-hub-dev.web.app**, verified end-to-end on the real URL.
+  - `firestore.rules` compiler warnings: **0** (was 1).
+- **Next / still open, needs your or the client's input:**
+  - Which billing system(s)/broker portal(s) the client actually uses, to
+    replace the CSV export with a real adapter (Phase 10).
+  - HIPAA/BAA posture — a legal/contractual decision, not engineering
+    (Phase 11).
+  - Whether `nemt-hub-dev` is the real production Firebase project or a
+    separate one gets created, plus a custom domain + DNS owner (Phase 12).
+  - Revisit Phase 8 (Telematics) once a real provider account exists; add
+    the eventual production domain to the Maps key's referrer allowlist.
