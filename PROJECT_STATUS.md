@@ -18,7 +18,7 @@ _Last updated: 2026-09-16_
 | 6 | Inspections | **DONE** |
 | 7 | Navigation / comms | **DONE** (navigation only; comms deferred) |
 | 8 | Telematics | **DEFERRED** — no real provider account yet (see below) |
-| 9 | Payroll | NOT STARTED |
+| 9 | Payroll | **DONE** (manual pay entry; no auto-calculation) |
 | 10 | Billing / reports | NOT STARTED |
 | 11 | Audit / compliance | NOT STARTED |
 | 12 | Production deploy | NOT STARTED |
@@ -242,7 +242,44 @@ provider swapped in later as one adapter per the README's stated
 architecture, or (b) wait for actual provider access and scope a real
 integration against that API. No code written for this phase.
 
-### Phases 9–12: NOT STARTED
+### Phase 9 — Payroll: DONE (manual pay entry; no auto-calculation)
+
+Genuinely new schema + rules from scratch (like Phase 7/8), scoped with the
+user first: **pay amounts are entered manually by staff, not calculated**
+— how a driver's pay is derived from trips (flat/hourly/percentage/etc.)
+is a real compensation decision this app doesn't make.
+
+- `src/types/index.ts`: `PayrollPeriodRecord` (status DRAFT/APPROVED/
+  EXPORTED, `entries: PayrollEntry[]` where each entry is `{driverId
+  (Auth uid), amount: Money, notes?}`, `createdBy`/`approvedBy`/
+  `approvedAt`).
+- `firestore.rules`: new `payrollPeriods` match block, gated to
+  `isManagerOrAbove()` — not `isStaff()` — per the README's own stated
+  role boundary ("MANAGER -- payroll, billing, reports", distinct from
+  DISPATCHER's domain). Create requires `status == 'DRAFT'`; delete is
+  ADMIN-only. This also put the long-unused `isManagerOrAbove()`
+  function to work, clearing one of the two pre-existing compiler
+  warnings (only the `auditLogs` `diff(self)` one remains).
+- `src/pages/payroll/PayrollPage.tsx` / `src/services/payroll.ts`: list
+  of periods; a detail view listing every DRIVER-role user with an
+  editable amount + notes (locked once approved) and a **reference-only**
+  count of their COMPLETED trips in that date range — shown for context,
+  never used to compute the amount. Approve/Export/Reopen workflow;
+  CSV export is generated client-side from data already on screen (no
+  vendor integration) and marks the period EXPORTED.
+- **Verified with real MANAGER, DISPATCHER, and ADMIN accounts** (not
+  the seeded-admin bypass): MANAGER completed the full
+  create→save→approve→export→reopen lifecycle with an entry persisting
+  correctly throughout; DISPATCHER was blocked both by the route guard
+  *and* with a `403` at the rules level on a direct read and a
+  collection query against a real document; ADMIN could delete a DRAFT
+  period while the delete control didn't even render for the MANAGER
+  account.
+- **Not built:** a driver-facing "my pay" view (this phase's placeholder
+  text framed payroll as a staff/management workflow — approvals,
+  export — not driver self-service; no such view was requested).
+
+### Phases 10–12: NOT STARTED
 
 ## Open decisions / known gaps
 
@@ -257,10 +294,10 @@ integration against that API. No code written for this phase.
   password on a test account.
 - No email/invite delivery wired (Resend etc.) — new-user creation prints a
   link rather than emailing one.
-- `firestore.rules` still emits 2 pre-existing compiler warnings, unrelated
-  to anything fixed so far: unused `isManagerOrAbove`, and a `diff(self)`
-  no-op on the `auditLogs` key check (line ~242) that makes that key
-  whitelist ineffective (does not grant extra access).
+- `firestore.rules` still emits 1 pre-existing compiler warning (down from
+  2 — Phase 9 put `isManagerOrAbove()` to use): a `diff(self)` no-op on
+  the `auditLogs` key check that makes that key whitelist ineffective
+  (does not grant extra access).
 - `docs/fix-readme-code-fence` (`2d2b70c`) pushed, not yet merged to `main`.
 - `AuthContext` still hardcodes `organization = null`; `/organizations/{orgId}`
   is not yet loaded on sign-in (role/org id resolve fine via `userRecord`;
@@ -287,9 +324,10 @@ integration against that API. No code written for this phase.
 
 ## Last worked on / next step
 
-- **Last:** Phase 7 completed (navigation + `vehicleId` rules fix). Scoped
-  Phase 8 (Telematics) and, per the user's explicit call, deferred it —
-  no real telematics provider account yet.
-- **Next:** Phase 9 — Payroll. Also remember to add the production domain
-  to the Maps key's referrer list once one exists, and to revisit Phase 8
-  once a real telematics provider is in place.
+- **Last:** Phase 8 (Telematics) scoped and deferred (no provider yet).
+  Phase 9 (Payroll) built and verified — manual pay entry, new schema +
+  `payrollPeriods` rules, tested against real MANAGER/DISPATCHER/ADMIN
+  accounts including a rules-level (not just UI) permission check.
+- **Next:** Phase 10 — Billing / reports. Also remember to add the
+  production domain to the Maps key's referrer list once one exists, and
+  to revisit Phase 8 once a real telematics provider is in place.
