@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Ambulance, Camera, ClipboardCheck, LogOut } from 'lucide-react'
+import { Ambulance, Camera, ClipboardCheck, HelpCircle, LogOut } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { formatRole, initialsFrom } from '../../lib/format'
 
@@ -32,6 +32,7 @@ export function DriverLayout() {
   const tabs = [
     { to: '/driver', label: 'My Trips', icon: ClipboardCheck, end: false },
     { to: '/driver/inspections', label: 'Inspections', icon: Camera, end: false },
+    { to: '/driver/help', label: 'Help', icon: HelpCircle, end: false },
   ] as const
 
   return (
@@ -72,7 +73,7 @@ export function DriverLayout() {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white" aria-label="Driver navigation">
-        <div className="grid grid-cols-2 gap-1 px-2 py-1.5">
+        <div className="grid grid-cols-3 gap-1 px-2 py-1.5">
           {tabs.map((tab) => (
             <NavLink
               key={tab.to}

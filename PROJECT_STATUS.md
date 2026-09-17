@@ -403,10 +403,33 @@ Added to the same seeded test org (`vDaohHxTqECFmLVGBr4T`) to verify
 role boundaries the way Phase 9 did:
 - MANAGER: `fingerprintacoustic+nemt-dev-manager@gmail.com`
 - DISPATCHER: `fingerprintacoustic+nemt-dev-dispatcher@gmail.com`
+- DRIVER: `fingerprintacoustic+nemt-dev-driver@gmail.com` (added 2026-09-17
+  to verify the new driver Help tab as a real driver login, not just a
+  driver *record* — the earlier "Jordan Rivera" driver still has no
+  linked login)
 
 Also seeded one real driver (Jordan Rivera), one vehicle (2026 Toyota
 Sienna, TEST123), and one COMPLETED trip with a $45 fare / broker
 "BrokerA" (Sep 15, 2026) — this is what Reports/Billing show data for.
+
+### In-app Help & guide (2026-09-17)
+
+Added so the client (or their staff/drivers) don't need to look for
+instructions outside the app itself:
+- `src/pages/help/HelpPage.tsx` (`/help`, staff app) — sections for
+  Getting started, Trips & dispatch, Drivers & vehicles, Inspections,
+  Payroll, Billing, Reports, Users, and Audit trail. Each section is
+  filtered by the signed-in user's actual role (`hasMinimumRole`), so a
+  Dispatcher never sees Payroll/Billing/Audit instructions that don't
+  apply to them — verified live as a real DISPATCHER account (saw only
+  4 of 9 sections) and a real DRIVER account.
+- `src/pages/driver/DriverHelpPage.tsx` (`/driver/help`) — a third tab
+  in the driver PWA's bottom nav (Your trips, Navigation, Inspections,
+  Your account). `DriverLayout.tsx`'s tab bar is now a 3-column grid
+  instead of 2.
+- Added "Help" to both nav configs (`src/config/navigation.ts`); no new
+  collection, no `firestore.rules` change — purely static, role-aware
+  content reusing data already in `AuthContext`.
 
 ## Open decisions / known gaps
 
@@ -557,9 +580,32 @@ Sienna, TEST123), and one COMPLETED trip with a $45 fare / broker
   not hypothetical, gate going forward. Closed two more engineering-only
   safeguards from the Compliance Readiness Brief in response: a
   server-side password policy (12+ chars, complexity, enforced by
-  Firebase's own servers) and a 20-minute idle auto-logout. **The brief
-  artifact itself still needs a republish** to move those two items from
-  "open" to "in place" before it goes to the client/counsel.
+  Firebase's own servers) and a 20-minute idle auto-logout. The
+  Compliance Readiness Brief artifact was republished the same day to
+  move those two items from "open" (7) to "in place" (8 safeguards, 5
+  open, still 2 blocking on the client/legal side).
+- **Deleted the superseded `docs/fix-readme-code-fence` branch**
+  (2026-09-17, both remote and local) at the user's request — nothing on
+  it was still needed once its one real fix landed on `main`.
+- **Drafted a pitch deck and pricing proposal** (2026-09-17) for
+  pitching the client and agreeing pricing — both use placeholder
+  `[Client Name]` (no client identified yet) and "Fingerprint Acoustic"
+  as the prepared-by name (the user's business, not yet registered).
+  Pricing anchors: $50,000 for what's built today, $85,000 for full
+  completion, $2,000/mo recommended ongoing support — the same figures
+  discussed earlier in conversation, now presented as an actual
+  proposal rather than a range. Same visual identity as the Compliance
+  Readiness Brief (Source Serif 4 + IBM Plex Sans, navy/teal) so all
+  three read as one package. The deck's "product preview" slide is an
+  illustrative mockup, not a real screenshot — a live screenshot capture
+  hit a rendering glitch in the browser tool at desktop viewport size,
+  not worth chasing further; swap in a real one before presenting if
+  wanted.
+- **Added in-app Help & guide** (2026-09-17, see Phase detail above) —
+  `/help` (staff, role-filtered sections) and `/driver/help` (a third
+  driver-app tab), so the client/their team don't need instructions from
+  outside the app itself. Verified live as real DISPATCHER and DRIVER
+  accounts (new test driver: `fingerprintacoustic+nemt-dev-driver@gmail.com`).
 - **Still genuinely stuck on a client relationship existing:**
   - Which billing system(s)/broker portal(s) to build a real adapter for
     (Phase 10) — draft outreach message was written, not yet sent to an

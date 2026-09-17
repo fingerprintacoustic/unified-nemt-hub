@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   CreditCard,
   Gauge,
+  HelpCircle,
   History,
   Home,
   Plug,
@@ -29,6 +30,7 @@ export interface NavItem {
 
 export const MAIN_NAV: readonly NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: Home },
+  { label: 'Help', href: '/help', icon: HelpCircle },
   { label: 'Drivers', href: '/drivers', icon: Users, minRole: 'DISPATCHER' },
   { label: 'Vehicles', href: '/vehicles', icon: CarFront, minRole: 'DISPATCHER' },
   { label: 'Trips', href: '/trips', icon: ClipboardCheck, minRole: 'DISPATCHER' },
@@ -46,6 +48,7 @@ export const MAIN_NAV: readonly NavItem[] = [
 export const DRIVER_NAV: readonly NavItem[] = [
   { label: 'My Trips', href: '/driver', icon: ClipboardCheck },
   { label: 'Inspections', href: '/driver/inspections', icon: Camera },
+  { label: 'Help', href: '/driver/help', icon: HelpCircle },
 ]
 
 export function navItemsFor(role: UserRole | undefined | null): NavItem[] {

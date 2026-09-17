@@ -7,8 +7,10 @@ import { LoginPage } from '../pages/auth/LoginPage'
 import { DashboardPage } from '../pages/dashboard/DashboardPage'
 import { DispatchPage } from '../pages/dispatch/DispatchPage'
 import { DriverHomePage } from '../pages/driver/DriverHomePage'
+import { DriverHelpPage } from '../pages/driver/DriverHelpPage'
 import { DriverInspectionsPage } from '../pages/driver/DriverInspectionsPage'
 import { DriversPage } from '../pages/drivers/DriversPage'
+import { HelpPage } from '../pages/help/HelpPage'
 import { InspectionsPage } from '../pages/inspections/InspectionsPage'
 import { IntegrationsPage } from '../pages/integrations/IntegrationsPage'
 import { NotFoundPage } from '../pages/NotFound'
@@ -42,6 +44,7 @@ export const router = createBrowserRouter([
       { path: 'audit', element: <ProtectedRoute minRole="ADMIN"><AuditPage /></ProtectedRoute> },
       { path: 'integrations', element: <ProtectedRoute minRole="ADMIN"><IntegrationsPage /></ProtectedRoute> },
       { path: 'settings', element: <ProtectedRoute minRole="ADMIN"><SettingsPage /></ProtectedRoute> },
+      { path: 'help', element: <HelpPage /> },
     ],
   },
   {
@@ -50,6 +53,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DriverHomePage /> },
       { path: 'inspections', element: <DriverInspectionsPage /> },
+      { path: 'help', element: <DriverHelpPage /> },
     ],
   },
   {
