@@ -60,6 +60,24 @@ export type VehicleStatus =
 
 export type VehicleType = 'SEDAN' | 'WHEELCHAIR_VAN' | 'AMBULETTE' | 'BUS' | 'OTHER'
 
+/** Where a telemetry snapshot came from. MANUAL is a staff-entered "last
+ * known status" (dispatch on the phone with a driver); real provider
+ * integrations (Phase 8 telematics) add their own value here later and
+ * write to the same `VehicleRecord.telemetry` field -- no schema, rules, or
+ * UI change needed to swap the source, per the README's adapter pattern. */
+export type TelemetrySource = 'MANUAL' | 'VERIZON_CONNECT'
+
+export interface VehicleTelemetry {
+  position?: GeoPoint
+  positionAddress?: string
+  speedMph?: number
+  ignitionOn?: boolean
+  recordedAt: Timestamp
+  source: TelemetrySource
+  /** Staff uid, set only when source is MANUAL. */
+  updatedBy?: string
+}
+
 export interface VehicleRecord {
   vehicleId: string
   organizationId: string
@@ -73,6 +91,8 @@ export interface VehicleRecord {
   wheelchairAccessible: boolean
   odometer: number
   lastInspectionAt?: Timestamp
+  /** Last known position/speed/ignition -- see VehicleTelemetry's own comment. */
+  telemetry?: VehicleTelemetry
   createdAt: Timestamp
   updatedAt: Timestamp
 }

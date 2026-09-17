@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { CarFront, Plus, Trash2 } from 'lucide-react'
+import { GeoPoint, Timestamp } from 'firebase/firestore'
+import { CarFront, MapPin, Navigation, Plus, Trash2 } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -9,13 +10,16 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { TextField } from '../../components/ui/TextField'
 import { useAuth } from '../../context/AuthContext'
 import { toUserMessage } from '../../lib/errors'
-import { formatDate } from '../../lib/format'
+import { formatDate, formatDateTime } from '../../lib/format'
+import { geocodeAddress } from '../../services/geocoding'
+import { buildDirectionsUrl } from '../../lib/navigation'
 import { writeAuditLog } from '../../services/audit'
 import {
   createVehicle,
   deleteVehicle,
   observeOrgVehicles,
   setVehicleStatus,
+  setVehicleTelemetry,
   updateVehicle,
   type NewVehicleInput,
 } from '../../services/vehicles'
@@ -62,6 +66,24 @@ function vehicleToForm(vehicle: VehicleRecord): VehicleFormState {
   }
 }
 
+interface TelemetryFormState {
+  address: string
+  lat: string
+  lng: string
+  verified: boolean
+  speedMph: string
+  ignitionOn: boolean
+}
+
+const EMPTY_TELEMETRY_FORM: TelemetryFormState = {
+  address: '',
+  lat: '',
+  lng: '',
+  verified: false,
+  speedMph: '',
+  ignitionOn: false,
+}
+
 export function VehiclesPage() {
   const { userRecord } = useAuth()
   const organizationId = userRecord?.organizationId
@@ -74,6 +96,13 @@ export function VehiclesPage() {
   const [form, setForm] = useState<VehicleFormState>(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+
+  const [telemetryVehicle, setTelemetryVehicle] = useState<VehicleRecord | null>(null)
+  const [telemetryForm, setTelemetryForm] = useState<TelemetryFormState>(EMPTY_TELEMETRY_FORM)
+  const [verifyingAddress, setVerifyingAddress] = useState(false)
+  const [addressNote, setAddressNote] = useState<string | null>(null)
+  const [savingTelemetry, setSavingTelemetry] = useState(false)
+  const [telemetryError, setTelemetryError] = useState<string | null>(null)
 
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -174,6 +203,74 @@ export function VehiclesPage() {
     }
   }
 
+  function openTelemetry(vehicle: VehicleRecord) {
+    const t = vehicle.telemetry
+    setTelemetryForm({
+      address: t?.positionAddress ?? '',
+      lat: t?.position ? String(t.position.latitude) : '',
+      lng: t?.position ? String(t.position.longitude) : '',
+      verified: Boolean(t?.position),
+      speedMph: t?.speedMph !== undefined ? String(t.speedMph) : '',
+      ignitionOn: t?.ignitionOn ?? false,
+    })
+    setAddressNote(null)
+    setTelemetryError(null)
+    setTelemetryVehicle(vehicle)
+  }
+
+  async function verifyTelemetryAddress() {
+    if (!telemetryForm.address.trim()) {
+      setAddressNote('Enter an address first.')
+      return
+    }
+    setVerifyingAddress(true)
+    setAddressNote(null)
+    try {
+      const result = await geocodeAddress(telemetryForm.address)
+      setTelemetryForm((prev) => ({ ...prev, lat: String(result.lat), lng: String(result.lng), verified: true }))
+      setAddressNote(`Found: ${result.formattedAddress}`)
+    } catch (error) {
+      setAddressNote(error instanceof Error ? error.message : 'Could not verify that address.')
+    } finally {
+      setVerifyingAddress(false)
+    }
+  }
+
+  async function handleSaveTelemetry() {
+    if (!telemetryVehicle) return
+    setTelemetryError(null)
+    const speedMph = telemetryForm.speedMph.trim() ? Number(telemetryForm.speedMph) : undefined
+    if (speedMph !== undefined && (!Number.isFinite(speedMph) || speedMph < 0)) {
+      setTelemetryError('Enter a valid speed, or leave it blank.')
+      return
+    }
+    if (telemetryForm.address.trim() && !telemetryForm.verified) {
+      setTelemetryError('Verify the address before saving, or clear it.')
+      return
+    }
+    setSavingTelemetry(true)
+    try {
+      await setVehicleTelemetry(telemetryVehicle.vehicleId, {
+        ...(telemetryForm.verified
+          ? {
+              position: new GeoPoint(Number(telemetryForm.lat), Number(telemetryForm.lng)),
+              positionAddress: telemetryForm.address.trim(),
+            }
+          : {}),
+        ...(speedMph !== undefined ? { speedMph } : {}),
+        ignitionOn: telemetryForm.ignitionOn,
+        recordedAt: Timestamp.now(),
+        source: 'MANUAL',
+        ...(userRecord ? { updatedBy: userRecord.uid } : {}),
+      })
+      setTelemetryVehicle(null)
+    } catch (error) {
+      setTelemetryError(toUserMessage(error, 'Could not save this status update.'))
+    } finally {
+      setSavingTelemetry(false)
+    }
+  }
+
   async function handleDelete(vehicleId: string) {
     setActionError(null)
     setPendingId(vehicleId)
@@ -240,6 +337,7 @@ export function VehiclesPage() {
                     <th className="pb-3 pr-4">Type</th>
                     <th className="pb-3 pr-4">Odometer</th>
                     <th className="pb-3 pr-4">Last inspection</th>
+                    <th className="pb-3 pr-4">Last known status</th>
                     <th className="pb-3 pr-4">Status</th>
                     <th className="pb-3 pr-4 text-right">Actions</th>
                   </tr>
@@ -264,6 +362,39 @@ export function VehiclesPage() {
                           {vehicle.lastInspectionAt ? formatDate(vehicle.lastInspectionAt.toDate()) : '—'}
                         </td>
                         <td className="py-3 pr-4">
+                          {vehicle.telemetry ? (
+                            <div className="flex flex-col gap-1 text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <Badge tone={vehicle.telemetry.ignitionOn ? 'green' : 'neutral'}>
+                                  {vehicle.telemetry.ignitionOn ? 'Ignition on' : 'Ignition off'}
+                                </Badge>
+                                {vehicle.telemetry.speedMph !== undefined && (
+                                  <span className="text-slate-500">{vehicle.telemetry.speedMph} mph</span>
+                                )}
+                              </div>
+                              <span className="text-slate-400">
+                                as of {formatDateTime(vehicle.telemetry.recordedAt.toDate())}
+                              </span>
+                              {vehicle.telemetry.position && (
+                                <a
+                                  href={buildDirectionsUrl(
+                                    vehicle.telemetry.position.latitude,
+                                    vehicle.telemetry.position.longitude,
+                                  )}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+                                >
+                                  <Navigation className="h-3 w-3" aria-hidden="true" />
+                                  {vehicle.telemetry.positionAddress ?? 'View position'}
+                                </a>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">No status yet</span>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4">
                           <select
                             value={vehicle.status}
                             disabled={isPending}
@@ -283,6 +414,10 @@ export function VehiclesPage() {
                           <div className="flex items-center justify-end gap-2">
                             <Button variant="secondary" size="sm" onClick={() => openEdit(vehicle)}>
                               Edit
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => openTelemetry(vehicle)}>
+                              <MapPin className="h-4 w-4" aria-hidden="true" />
+                              Update status
                             </Button>
                             {canDelete &&
                               (confirmDeleteId === vehicle.vehicleId ? (
@@ -393,6 +528,70 @@ export function VehiclesPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={telemetryVehicle !== null}
+        onClose={() => setTelemetryVehicle(null)}
+        title={telemetryVehicle ? `Update status: ${telemetryVehicle.year} ${telemetryVehicle.make} ${telemetryVehicle.model}` : ''}
+      >
+        {telemetryVehicle && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Manual entry for now -- e.g. what a driver reports over the phone. Once a real telematics
+              provider is connected, this updates automatically instead.
+            </p>
+            <div>
+              <TextField
+                label="Current location (optional)"
+                value={telemetryForm.address}
+                onChange={(v) => {
+                  setTelemetryForm((prev) => ({ ...prev, address: v, verified: false }))
+                  setAddressNote(null)
+                }}
+                placeholder="e.g. 500 Main St, Springfield"
+              />
+              <div className="mt-2 flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  loading={verifyingAddress}
+                  onClick={verifyTelemetryAddress}
+                >
+                  Verify
+                </Button>
+                {addressNote && <p className="text-xs text-slate-500">{addressNote}</p>}
+              </div>
+            </div>
+            <TextField
+              label="Speed (mph, optional)"
+              type="number"
+              value={telemetryForm.speedMph}
+              onChange={(v) => setTelemetryForm((prev) => ({ ...prev, speedMph: v }))}
+            />
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={telemetryForm.ignitionOn}
+                onChange={(event) => setTelemetryForm((prev) => ({ ...prev, ignitionOn: event.target.checked }))}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              Ignition on
+            </label>
+
+            {telemetryError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{telemetryError}</p>}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="secondary" onClick={() => setTelemetryVehicle(null)}>
+                Cancel
+              </Button>
+              <Button loading={savingTelemetry} onClick={handleSaveTelemetry}>
+                Save status
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </>
   )

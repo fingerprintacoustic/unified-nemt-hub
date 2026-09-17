@@ -17,7 +17,7 @@ _Last updated: 2026-09-17_
 | 5 | Driver PWA | **DONE** |
 | 6 | Inspections | **DONE** |
 | 7 | Navigation / comms | **DONE** (navigation only; comms deferred) |
-| 8 | Telematics | **DEFERRED** — no real provider account yet (see below) |
+| 8 | Telematics | **PARTIAL** — manual/scaffolding only; real Verizon Connect sync still needs a provider account |
 | 9 | Payroll | **DONE** (manual pay entry; no auto-calculation) |
 | 10 | Billing / reports | **DONE** (CSV export only; no vendor sync yet) |
 | 11 | Audit / compliance | **PARTIAL** — audit trail wired + viewer built; HIPAA/BAA compliance hardening not started |
@@ -227,20 +227,43 @@ writing anything.
   project folder moves. Worth remembering if `firebase deploy` ever
   suddenly 403s again.
 
-### Phase 8 — Telematics: DEFERRED
+### Phase 8 — Telematics: PARTIAL (manual scaffolding; no live provider)
 
-Scoped and explicitly deferred by the user (2026-09-16), not skipped by
-default. Same situation as Phase 7 was before scoping: no existing
-schema/rules/page — only a one-off `gpsLocation` snapshot on
-`InspectionRecord`, nothing live. Live vehicle position/speed/ignition
-needs a real fleet-telematics provider account (the README already names
-"Verizon GPS" as a planned adapter target) with its own API
-credentials/OAuth, typically an enterprise contract — not something
-settable up the way the Maps key was. Options when this gets revisited:
-(a) schema + UI scaffolding fed by manual/simulated data now, real
-provider swapped in later as one adapter per the README's stated
-architecture, or (b) wait for actual provider access and scope a real
-integration against that API. No code written for this phase.
+Originally deferred (2026-09-16) — no real fleet-telematics provider
+account existed yet, and live position/speed/ignition needs one (the
+README names "Verizon GPS" as the planned adapter target; Verizon
+Connect's Reveal platform is a documented REST API covering vehicle
+position/history, speed, ignition, and geofence/idling/speeding alerts,
+per a check of their public API docs). Two options were on the table:
+(a) build schema + UI scaffolding fed by manual data now, real provider
+swapped in later as one adapter, or (b) wait entirely for provider
+access. **Chose (a)** on 2026-09-17, same reasoning as Payroll/Billing's
+derive-don't-invent pattern.
+
+- `src/types/index.ts`: `VehicleRecord.telemetry?: VehicleTelemetry`
+  (position, positionAddress, speedMph, ignitionOn, recordedAt, `source:
+  'MANUAL' | 'VERIZON_CONNECT'`, updatedBy). A snapshot field, not a
+  time-series collection — deliberately minimal since a real provider
+  integration would likely want its own event-log shape anyway; no sense
+  building history storage now that gets thrown away later.
+- `src/services/vehicles.ts`: `setVehicleTelemetry()`, its own function
+  like `setVehicleLastInspection()` so `source`/`recordedAt` stay honest.
+- `src/pages/vehicles/VehiclesPage.tsx`: "Update status" action (any
+  staff role) opens a small form — address (geocoded via the existing
+  `geocodeAddress()`, same Verify-button UX as Trips), speed, ignition
+  toggle. The fleet table shows a "Last known status" column: ignition
+  badge, speed, how long ago, and a "view position" link reusing Phase
+  7's `buildDirectionsUrl()`.
+- **No `firestore.rules` change needed** — `telemetry` is just another
+  field under the vehicles collection's existing staff-write rule.
+- **Verified as a real DISPATCHER account** (not admin bypass): set a
+  vehicle's status to "500 Main St, Springfield, IL" / 32 mph / ignition
+  on, watched it geocode, save, and render correctly in the fleet table
+  with a working Maps link to the exact verified coordinates.
+- **Still open:** an actual Verizon Connect account. When one exists,
+  the swap is: a background job writes to the same `telemetry` field with
+  `source: 'VERIZON_CONNECT'` instead of staff typing it in — no schema,
+  rules, or UI change needed on this end.
 
 ### Phase 9 — Payroll: DONE (manual pay entry; no auto-calculation)
 
@@ -429,8 +452,9 @@ Sienna, TEST123), and one COMPLETED trip with a $45 fare / broker
   2026-09-16 for Phase 10 verification) — passwords set directly via the
   Admin SDK this session, not recorded here; reset via
   `scripts/set-user-password.mjs` before reusing.
-- One driver (Jordan Rivera), one vehicle (2026 Toyota Sienna / TEST123),
-  one COMPLETED trip ($45 fare, broker "BrokerA", Sep 15 2026).
+- One driver (Jordan Rivera), one vehicle (2026 Toyota Sienna / TEST123,
+  now with a manual telemetry snapshot set), one COMPLETED trip ($45 fare,
+  broker "BrokerA", Sep 15 2026).
 
 ## Last worked on / next step
 
@@ -449,12 +473,25 @@ Sienna, TEST123), and one COMPLETED trip with a $45 fare / broker
   - Phase 12 (Production deploy) PARTIAL — app is live at
     **https://nemt-hub-dev.web.app**, verified end-to-end on the real URL.
   - `firestore.rules` compiler warnings: **0** (was 1).
+- **Also this session (2026-09-17):**
+  - Sent the client a draft message asking which billing system(s) and
+    "other software" they use, to unblock a real Phase 10 adapter.
+  - Researched the HIPAA/BAA question and published a **Compliance
+    Readiness Brief** artifact for the client/counsel — flags Firestore
+    and Cloud Storage as BAA-covered, and Firebase Authentication's
+    coverage as unconfirmed (a real, previously-unflagged risk since this
+    app's identities live there).
+  - Phase 8 (Telematics) moved from DEFERRED to **PARTIAL** — manual
+    status-entry scaffolding built and verified as a real DISPATCHER
+    account; see Phase 8 detail above. No rules change needed.
 - **Next / still open, needs your or the client's input:**
   - Which billing system(s)/broker portal(s) the client actually uses, to
-    replace the CSV export with a real adapter (Phase 10).
+    replace the CSV export with a real adapter (Phase 10) — question sent,
+    awaiting reply.
   - HIPAA/BAA posture — a legal/contractual decision, not engineering
-    (Phase 11).
+    (Phase 11); brief handed off for counsel review.
   - Whether `nemt-hub-dev` is the real production Firebase project or a
     separate one gets created, plus a custom domain + DNS owner (Phase 12).
-  - Revisit Phase 8 (Telematics) once a real provider account exists; add
-    the eventual production domain to the Maps key's referrer allowlist.
+  - A real Verizon Connect account, to replace Phase 8's manual entry with
+    a live sync; add the eventual production domain to the Maps key's
+    referrer allowlist.

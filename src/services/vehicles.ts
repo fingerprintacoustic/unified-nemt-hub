@@ -11,7 +11,7 @@ import {
   type QuerySnapshot,
 } from 'firebase/firestore'
 import { getFirestore } from '../lib/firebase'
-import type { Timestamp, VehicleRecord, VehicleStatus } from '../types'
+import type { Timestamp, VehicleRecord, VehicleStatus, VehicleTelemetry } from '../types'
 
 const VEHICLES_COLLECTION = 'vehicles'
 
@@ -45,10 +45,11 @@ export function observeOrgVehicles(
   })
 }
 
-// lastInspectionAt is written by the Inspections module, never from this form.
+// lastInspectionAt and telemetry are written by their own dedicated setters,
+// never from this form.
 export type NewVehicleInput = Omit<
   VehicleRecord,
-  'vehicleId' | 'createdAt' | 'updatedAt' | 'lastInspectionAt'
+  'vehicleId' | 'createdAt' | 'updatedAt' | 'lastInspectionAt' | 'telemetry'
 >
 
 export async function createVehicle(input: NewVehicleInput): Promise<string> {
@@ -63,7 +64,7 @@ export async function createVehicle(input: NewVehicleInput): Promise<string> {
 }
 
 export type VehiclePatch = Partial<
-  Omit<VehicleRecord, 'vehicleId' | 'organizationId' | 'createdAt' | 'updatedAt' | 'lastInspectionAt'>
+  Omit<VehicleRecord, 'vehicleId' | 'organizationId' | 'createdAt' | 'updatedAt' | 'lastInspectionAt' | 'telemetry'>
 >
 
 export async function updateVehicle(vehicleId: string, patch: VehiclePatch): Promise<void> {
@@ -83,6 +84,16 @@ export async function setVehicleStatus(vehicleId: string, status: VehicleStatus)
  */
 export async function setVehicleLastInspection(vehicleId: string, occurredAt: Timestamp): Promise<void> {
   await updateDoc(vehicleDocRef(vehicleId), { lastInspectionAt: occurredAt, updatedAt: serverTimestamp() })
+}
+
+/**
+ * Records a vehicle's last-known position/speed/ignition (Phase 8
+ * telematics scaffolding). Its own function for the same reason as
+ * setVehicleLastInspection -- a dedicated write path keeps `source` and
+ * `recordedAt` honest, rather than letting the general edit form set them.
+ */
+export async function setVehicleTelemetry(vehicleId: string, telemetry: VehicleTelemetry): Promise<void> {
+  await updateDoc(vehicleDocRef(vehicleId), { telemetry, updatedAt: serverTimestamp() })
 }
 
 export async function deleteVehicle(vehicleId: string): Promise<void> {
