@@ -242,6 +242,24 @@ service cloud.firestore {
       allow delete: if isStaff() && sameOrg(resource.data.organizationId);
     }
 
+    // Payroll periods -- MANAGER and above only (README: "MANAGER -- payroll,
+    // billing, reports"; DISPATCHER's domain stops at dispatch/drivers/
+    // vehicles/trips/inspections). Amounts are staff-entered, not computed by
+    // these rules or this app -- see PayrollPeriodRecord's own comment.
+    // Delete is ADMIN-only, matching this app's convention for destructive
+    // actions elsewhere (users, and the UI-level convention on
+    // drivers/vehicles/trips).
+    match /payrollPeriods/{periodId} {
+      allow read: if isManagerOrAbove() && sameOrg(resource.data.organizationId);
+      allow create: if isManagerOrAbove()
+        && sameOrg(request.resource.data.organizationId)
+        && request.resource.data.status == 'DRAFT';
+      allow update: if isManagerOrAbove()
+        && sameOrg(resource.data.organizationId)
+        && sameOrg(request.resource.data.organizationId);
+      allow delete: if isAdmin() && sameOrg(resource.data.organizationId);
+    }
+
     // Audit logs -- staff may read their org's audit trail. Writes are
     // intentionally restricted: create requires the same
     // organization/actor/timestamp integrity checks as before (matching

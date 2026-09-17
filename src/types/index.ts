@@ -205,6 +205,37 @@ export interface LocationRecord {
   updatedAt: Timestamp
 }
 
+export type PayrollPeriodStatus = 'DRAFT' | 'APPROVED' | 'EXPORTED'
+
+export interface PayrollEntry {
+  /** Firebase Auth uid of the driver -- same convention as TripRecord.driverId
+   * and InspectionRecord.driverId, so it links directly to users/{uid}. */
+  driverId: string
+  amount: Money
+  notes?: string
+}
+
+/**
+ * A payroll period is deliberately manual-entry, not auto-calculated: how a
+ * driver's pay is derived from trips (flat/hourly/percentage/etc.) is a real
+ * compensation decision this app doesn't make. entries[].amount is entered
+ * by staff; tripsCompleted (see services/payroll.ts) is shown alongside as
+ * reference context only, never used to compute amount.
+ */
+export interface PayrollPeriodRecord {
+  periodId: string
+  organizationId: string
+  startDate: Timestamp
+  endDate: Timestamp
+  status: PayrollPeriodStatus
+  entries: PayrollEntry[]
+  createdBy: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  approvedBy?: string
+  approvedAt?: Timestamp
+}
+
 export interface AuditLogRecord {
   logId: string
   organizationId: string
