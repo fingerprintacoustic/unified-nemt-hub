@@ -17,7 +17,7 @@ _Last updated: 2026-09-16_
 | 5 | Driver PWA | **DONE** |
 | 6 | Inspections | **DONE** |
 | 7 | Navigation / comms | **DONE** (navigation only; comms deferred) |
-| 8 | Telematics | NOT STARTED |
+| 8 | Telematics | **DEFERRED** — no real provider account yet (see below) |
 | 9 | Payroll | NOT STARTED |
 | 10 | Billing / reports | NOT STARTED |
 | 11 | Audit / compliance | NOT STARTED |
@@ -227,7 +227,22 @@ writing anything.
   project folder moves. Worth remembering if `firebase deploy` ever
   suddenly 403s again.
 
-### Phases 8–12: NOT STARTED
+### Phase 8 — Telematics: DEFERRED
+
+Scoped and explicitly deferred by the user (2026-09-16), not skipped by
+default. Same situation as Phase 7 was before scoping: no existing
+schema/rules/page — only a one-off `gpsLocation` snapshot on
+`InspectionRecord`, nothing live. Live vehicle position/speed/ignition
+needs a real fleet-telematics provider account (the README already names
+"Verizon GPS" as a planned adapter target) with its own API
+credentials/OAuth, typically an enterprise contract — not something
+settable up the way the Maps key was. Options when this gets revisited:
+(a) schema + UI scaffolding fed by manual/simulated data now, real
+provider swapped in later as one adapter per the README's stated
+architecture, or (b) wait for actual provider access and scope a real
+integration against that API. No code written for this phase.
+
+### Phases 9–12: NOT STARTED
 
 ## Open decisions / known gaps
 
@@ -272,9 +287,9 @@ writing anything.
 
 ## Last worked on / next step
 
-- **Last:** built and verified the navigation deep-link (Phase 7's scoped-in
-  half; comms deferred), found and fixed the `trips` `vehicleId`
-  driver-update bug, redeployed and re-verified both directions. Phase 7
-  is complete.
-- **Next:** Phase 8 — Telematics. Also remember to add the production
-  domain to the Maps key's referrer list once one exists.
+- **Last:** Phase 7 completed (navigation + `vehicleId` rules fix). Scoped
+  Phase 8 (Telematics) and, per the user's explicit call, deferred it —
+  no real telematics provider account yet.
+- **Next:** Phase 9 — Payroll. Also remember to add the production domain
+  to the Maps key's referrer list once one exists, and to revisit Phase 8
+  once a real telematics provider is in place.
