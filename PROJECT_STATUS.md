@@ -442,8 +442,9 @@ Sienna, TEST123), and one COMPLETED trip with a $45 fare / broker
   to spaces/commas). Merging the branch as-is would have been destructive:
   it was cut before `PROJECT_STATUS.md`, `.firebaserc`, and several
   `.gitignore`/`.env.example` entries existed, so a literal merge would
-  have deleted all of that. The branch itself is safe to delete whenever
-  you'd like — nothing on it is still needed.
+  have deleted all of that. **Deleted (2026-09-17)** — both the remote
+  (`origin/docs/fix-readme-code-fence`) and local copies are gone; nothing
+  on it was still needed.
 - **`AuthContext.organization` is now loaded (2026-09-17)** — a new
   `src/services/organizations.ts` (`observeOrganization`) subscribes to
   `/organizations/{orgId}` once `userRecord.organizationId` resolves,
@@ -550,7 +551,7 @@ Sienna, TEST123), and one COMPLETED trip with a $45 fare / broker
   - `AuthContext.organization` now loads the real org record.
   - `docs/fix-readme-code-fence` superseded — its fix (plus a full
     README punctuation-corruption cleanup) landed directly on `main`;
-    the stale branch is safe to delete.
+    the stale branch (local and remote) has been deleted.
 - **User confirmed (2026-09-17) the client's trips are real
   Medicaid/Medicare-funded** — treat the HIPAA/BAA question as a real,
   not hypothetical, gate going forward. Closed two more engineering-only
