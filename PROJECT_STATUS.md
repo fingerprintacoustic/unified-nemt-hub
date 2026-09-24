@@ -449,21 +449,18 @@ Prepared for a live client walkthrough of `nemt-hub-dev.web.app`:
   telemetry), 11 trips across every status, 3 inspections. Trip times are
   relative to when the script runs, so **re-run it right before a demo**.
   Deliberately writes no audit-log entries.
-- **Google Maps key still blocks the live domain** —
-  `RefererNotAllowedMapError` confirmed on `https://nemt-hub-dev.web.app`:
-  the key's website restrictions only list `localhost:5173`. Address
-  "Verify" cannot work live until `https://nemt-hub-dev.web.app/*` is
-  added (Google Cloud console → APIs & Services → Credentials → the key →
-  Website restrictions). Geocoding now times out after 10s with a clear
-  message instead of spinning forever.
+- **Google Maps key now allows the live domain (fixed 2026-09-23)** —
+  `https://nemt-hub-dev.web.app/*` was added to the key's website
+  restrictions; address Verify verified working on the live site (returned
+  "Found: Google Building 41..."). Geocoding also now times out after 10s
+  with a clear message instead of spinning if a domain is ever rejected.
+  Remember to add the real production domain here too once one exists.
 
 ## Open decisions / known gaps
 
-- **Google Maps key referrer list is dev-only.** Only `http://localhost:5173/*`
-  is on the key's allowed-websites list right now (Phase 4 detail above).
-  Add the production domain's referrer once one exists, or geocoding will
-  fail there (falls back to nothing — the UI will show a "could not
-  verify" error, not manual entry, since the key IS configured).
+- **Google Maps key referrer list** covers `http://localhost:5173/*` and
+  `https://nemt-hub-dev.web.app/*`. Add any future production/custom
+  domain's referrer too, or geocoding will time out there.
 - **Self-service password reset shipped (2026-09-17).** "Forgot password?"
   on the sign-in screen (`sendPasswordReset()` in `src/services/auth.ts`)
   uses Firebase Auth's own hosted email delivery — no third-party mail
