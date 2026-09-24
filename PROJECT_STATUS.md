@@ -456,6 +456,13 @@ Prepared for a live client walkthrough of `nemt-hub-dev.web.app`:
   with a clear message instead of spinning if a domain is ever rejected.
   Remember to add the real production domain here too once one exists.
 
+- **Desktop layout bug fixed (2026-09-24, found by the user):** on screens
+  >= 1024px the staff sidebar was `lg:static`, which put it in normal flow
+  above the page content, so every page looked blank until you scrolled
+  down. Earlier testing only used narrow viewports so it was never seen.
+  Sidebar is now always `fixed`; verified on the live site at 1440px wide
+  (sidebar at 0,0; content starts at the header, beside the sidebar).
+
 ## Open decisions / known gaps
 
 - **Google Maps key referrer list** covers `http://localhost:5173/*` and
