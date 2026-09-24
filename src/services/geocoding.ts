@@ -20,7 +20,15 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult> {
   const geocoder = new window.google!.maps.Geocoder()
 
   return new Promise((resolve, reject) => {
+    // Google never calls back when the API key rejects this site's domain
+    // (RefererNotAllowedMapError), which would leave the Verify button
+    // spinning forever -- fail visibly instead.
+    const timer = setTimeout(
+      () => reject(new Error('Address lookup timed out. Check that this site is allowed on the Google Maps key.')),
+      10000,
+    )
     geocoder.geocode({ address: trimmed }, (results, status) => {
+      clearTimeout(timer)
       if (status === 'OK' && results && results[0]) {
         const location = results[0].geometry.location
         resolve({

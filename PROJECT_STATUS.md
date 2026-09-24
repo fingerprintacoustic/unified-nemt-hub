@@ -431,6 +431,32 @@ instructions outside the app itself:
   collection, no `firestore.rules` change — purely static, role-aware
   content reusing data already in `AuthContext`.
 
+### Demo prep (2026-09-23)
+
+Prepared for a live client walkthrough of `nemt-hub-dev.web.app`:
+- **Dashboard now shows live data** (`DashboardPage.tsx`): active trips
+  (with "scheduled today"), vehicles in service, active drivers, open
+  issues (flagged inspections + vehicles in maintenance/out of service),
+  recent trips, trips-by-status, and real quick-action links. Removed all
+  "Phase 2"/"Coming soon" placeholder copy.
+- **`scripts/seed-demo-data.mjs --org-id <id>`** — idempotent (`demo-`
+  doc ids) fake data: org renamed "Riverside Medical Transport (Demo)",
+  the four test logins renamed (Alex Morgan admin, Priya Shah manager,
+  Dana Reyes dispatcher, Marcus Bell driver), two extra driver logins
+  (`fingerprintacoustic+demo-sofia@gmail.com`,
+  `fingerprintacoustic+demo-terrence@gmail.com`, password
+  `DemoDriver123!`), 4 drivers (3 linked to logins), 5 vehicles (some with
+  telemetry), 11 trips across every status, 3 inspections. Trip times are
+  relative to when the script runs, so **re-run it right before a demo**.
+  Deliberately writes no audit-log entries.
+- **Google Maps key still blocks the live domain** —
+  `RefererNotAllowedMapError` confirmed on `https://nemt-hub-dev.web.app`:
+  the key's website restrictions only list `localhost:5173`. Address
+  "Verify" cannot work live until `https://nemt-hub-dev.web.app/*` is
+  added (Google Cloud console → APIs & Services → Credentials → the key →
+  Website restrictions). Geocoding now times out after 10s with a clear
+  message instead of spinning forever.
+
 ## Open decisions / known gaps
 
 - **Google Maps key referrer list is dev-only.** Only `http://localhost:5173/*`

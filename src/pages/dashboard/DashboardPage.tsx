@@ -1,8 +1,9 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Activity,
   AlertTriangle,
   CarFront,
-  CheckCircle2,
   ClipboardCheck,
   Users,
   type LucideIcon,
@@ -13,8 +14,12 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { hasFirebaseConfig } from '../../config/env'
 import { useAuth } from '../../context/AuthContext'
-import { isStaffRole } from '../../config/roles'
-import { formatRole } from '../../lib/format'
+import { formatDateTime, formatRole } from '../../lib/format'
+import { observeOrgDrivers } from '../../services/drivers'
+import { observeOrgInspections } from '../../services/inspections'
+import { observeOrgTrips } from '../../services/trips'
+import { observeOrgVehicles } from '../../services/vehicles'
+import type { DriverRecord, InspectionRecord, TripRecord, TripStatus, VehicleRecord } from '../../types'
 
 interface SummaryCard {
   label: string
@@ -31,20 +36,94 @@ const toneClasses: Record<SummaryCard['tone'], string> = {
   blue: 'bg-blue-50 text-blue-600',
 }
 
+const CLOSED_STATUSES: TripStatus[] = ['COMPLETED', 'CANCELLED', 'NO_SHOW']
+
+const STATUS_TONE: Record<TripStatus, 'neutral' | 'blue' | 'green' | 'amber' | 'red'> = {
+  SCHEDULED: 'neutral',
+  ASSIGNED: 'blue',
+  EN_ROUTE: 'blue',
+  PICKED_UP: 'blue',
+  DROPPED_OFF: 'blue',
+  COMPLETED: 'green',
+  CANCELLED: 'red',
+  NO_SHOW: 'amber',
+}
+
+function isToday(ms: number): boolean {
+  const d = new Date(ms)
+  const now = new Date()
+  return (
+    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+  )
+}
+
 export function DashboardPage() {
   const { user, userRecord, organization } = useAuth()
-  const isStaff = isStaffRole(userRecord?.role)
   const role = userRecord?.role
+  const organizationId = userRecord?.organizationId
+
+  const [trips, setTrips] = useState<TripRecord[]>([])
+  const [vehicles, setVehicles] = useState<VehicleRecord[]>([])
+  const [drivers, setDrivers] = useState<DriverRecord[]>([])
+  const [inspections, setInspections] = useState<InspectionRecord[]>([])
+
+  useEffect(() => {
+    if (!organizationId) return
+    const unsubs = [
+      observeOrgTrips(organizationId, setTrips),
+      observeOrgVehicles(organizationId, setVehicles),
+      observeOrgDrivers(organizationId, setDrivers),
+      observeOrgInspections(organizationId, setInspections),
+    ]
+    return () => unsubs.forEach((unsubscribe) => unsubscribe())
+  }, [organizationId])
+
+  const stats = useMemo(() => {
+    const activeTrips = trips.filter((t) => !CLOSED_STATUSES.includes(t.status))
+    const todayCount = trips.filter((t) => isToday(t.scheduledPickupAt.toMillis())).length
+    const inService = vehicles.filter((v) => v.status === 'AVAILABLE' || v.status === 'ASSIGNED').length
+    const activeDrivers = drivers.filter((d) => d.status === 'ACTIVE').length
+    const flagged = inspections.filter((i) => i.status === 'FLAGGED').length
+    const downVehicles = vehicles.filter((v) => v.status === 'MAINTENANCE' || v.status === 'OUT_OF_SERVICE').length
+    const recent = [...trips]
+      .sort((a, b) => b.updatedAt.toMillis() - a.updatedAt.toMillis())
+      .slice(0, 6)
+    const byStatus = trips.reduce<Partial<Record<TripStatus, number>>>((acc, t) => {
+      acc[t.status] = (acc[t.status] ?? 0) + 1
+      return acc
+    }, {})
+    return { activeTrips: activeTrips.length, todayCount, inService, activeDrivers, flagged, downVehicles, recent, byStatus }
+  }, [trips, vehicles, drivers, inspections])
 
   const summaryCards: SummaryCard[] = [
-    { label: 'Active Trips', value: '—', hint: 'Dispatch module (Phase 2)', icon: ClipboardCheck, tone: 'blue' },
-    { label: 'Vehicles in service', value: '—', hint: 'Fleet module (Phase 2)', icon: CarFront, tone: 'green' },
-    { label: 'Active Drivers', value: '—', hint: 'Drivers module (Phase 2)', icon: Users, tone: 'neutral' },
-    { label: 'Open issues', value: '0', hint: 'From inspections and alerts', icon: AlertTriangle, tone: 'amber' },
-  ]
-
-  const recentActivity: { title: string; time: string; icon: LucideIcon; tone: 'green' | 'blue' | 'amber' | 'neutral' }[] = [
-    { title: 'No recent activity yet', time: '—', icon: Activity, tone: 'neutral' },
+    {
+      label: 'Active trips',
+      value: String(stats.activeTrips),
+      hint: `${stats.todayCount} scheduled today`,
+      icon: ClipboardCheck,
+      tone: 'blue',
+    },
+    {
+      label: 'Vehicles in service',
+      value: String(stats.inService),
+      hint: `${vehicles.length} in the fleet`,
+      icon: CarFront,
+      tone: 'green',
+    },
+    {
+      label: 'Active drivers',
+      value: String(stats.activeDrivers),
+      hint: `${drivers.length} on the roster`,
+      icon: Users,
+      tone: 'neutral',
+    },
+    {
+      label: 'Open issues',
+      value: String(stats.flagged + stats.downVehicles),
+      hint: 'Flagged inspections and vehicles out of service',
+      icon: AlertTriangle,
+      tone: stats.flagged + stats.downVehicles > 0 ? 'amber' : 'neutral',
+    },
   ]
 
   return (
@@ -53,8 +132,8 @@ export function DashboardPage() {
         title="Dashboard"
         description={
           hasFirebaseConfig()
-            ? `Welcome back, ${firstName(userRecord?.firstName)}.`
-            : 'Local development preview — Firebase not configured..'
+            ? `Welcome back, ${userRecord?.firstName ?? 'there'}.`
+            : 'Local development preview — Firebase not configured.'
         }
       />
 
@@ -77,34 +156,45 @@ export function DashboardPage() {
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card title="Recent activity" subtitle="Live activity streaming arrives in a later phase.">
-            <ul className="divide-y divide-slate-100">
-              {recentActivity.map((item) => (
-                <li key={item.title} className="flex items-center gap-3 py-3">
-                  <Activity className="h-4.5 w-4.5 text-slate-400" aria-hidden="true" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-700">{item.title}</p>
-                    <p className="text-xs text-slate-400">{item.time}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <EmptyState
-              icon={Activity}
-              title="Live activity will appear here"
-              description="Once trips, inspections, and dispatch are wired up, the dashboard becomes the single place to run the business.."
-            />
+          <Card title="Recent trips" subtitle="Most recently updated">
+            {stats.recent.length === 0 ? (
+              <EmptyState
+                icon={Activity}
+                title="No trips yet"
+                description="Schedule a trip and it will show up here as it moves through dispatch."
+              />
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {stats.recent.map((trip) => (
+                  <li key={trip.tripId} className="flex items-center gap-3 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-700">
+                        {trip.originAddress} → {trip.destinationAddress}
+                      </p>
+                      <p className="text-xs text-slate-400">Pickup {formatDateTime(trip.scheduledPickupAt.toDate())}</p>
+                    </div>
+                    <Badge tone={STATUS_TONE[trip.status]}>{trip.status.replace(/_/g, ' ')}</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
         </div>
 
         <div className="space-y-6">
-          <Card title="System status">
-            <div className="space-y-3">
-              <StatusRow dot="bg-emerald-500" label="Application shell" detail="Healthy" />
-              <StatusRow dot={hasFirebaseConfig() ? 'bg-emerald-500' : 'bg-amber-500'} label="Firebase" detail={hasFirebaseConfig() ? 'Configured' : 'Not configured — local preview'} />
-              <StatusRow dot="bg-emerald-500" label="Routing" detail="React Router v7 active" />
-              <StatusRow dot="bg-slate-300" label="Backend services" detail="Phase 2 (Cloud Functions)" />
-            </div>
+          <Card title="Trips by status">
+            {trips.length === 0 ? (
+              <p className="text-sm text-slate-500">Nothing scheduled yet.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {(Object.keys(stats.byStatus) as TripStatus[]).map((status) => (
+                  <div key={status} className="flex items-center justify-between">
+                    <Badge tone={STATUS_TONE[status]}>{status.replace(/_/g, ' ')}</Badge>
+                    <span className="text-sm font-medium text-slate-700">{stats.byStatus[status]}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
 
           <Card title="Your session">
@@ -132,30 +222,19 @@ export function DashboardPage() {
 
           <Card title="Quick actions">
             <div className="flex flex-wrap gap-2">
-              <Badge tone="blue">{isStaff ? 'Dispatch queue' : 'My trips'}</Badge>
-              <Badge tone="green">Inspections</Badge>
-              <Badge tone="neutral">Coming in Phase 2</Badge>
+              <Link to="/dispatch">
+                <Badge tone="blue">Dispatch board</Badge>
+              </Link>
+              <Link to="/trips">
+                <Badge tone="green">Schedule a trip</Badge>
+              </Link>
+              <Link to="/inspections">
+                <Badge tone="neutral">Inspections</Badge>
+              </Link>
             </div>
           </Card>
         </div>
       </div>
     </>
   )
-}
-
-function StatusRow({ dot, label, detail }: { dot: string; label: string; detail: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} aria-hidden="true" />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-slate-700">{label}</p>
-        <p className="text-xs text-slate-400">{detail}</p>
-      </div>
-      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
-    </div>
-  )
-}
-
-function firstName(name: string | undefined): string {
-  return name ?? 'there'
 }
