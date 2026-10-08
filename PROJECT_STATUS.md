@@ -485,13 +485,13 @@ walkthrough. Linked from the login screen ("Try the interactive demo").
   trip to Completed -> billing shows it -> payroll -> users -> audit ->
   admin delete + role change). Demo is not covered by automated tests.
 
-### Clearing the seeded test data (pending)
+### Seeded test data cleared (2026-10-08)
 
 `scripts/clear-demo-data.mjs --org-id <id>` (dry run by default; `--confirm`
 deletes) removes an org's drivers, vehicles, trips, inspections, payroll,
 billing periods and locations, and leaves the org, logins and audit log
-alone. Auto mode blocked running the bulk delete itself, so **it has not been
-run**; the user can run it with `--confirm`. The public `/demo` page does not
+alone. **Run with `--confirm` at the user's request**: the org now has no drivers, vehicles, trips,
+inspections or billing/payroll periods (verified by a follow-up dry run). The public `/demo` page does not
 depend on any of that data.
 
 ## Open decisions / known gaps
