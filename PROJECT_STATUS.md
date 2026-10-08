@@ -463,6 +463,37 @@ Prepared for a live client walkthrough of `nemt-hub-dev.web.app`:
   Sidebar is now always `fixed`; verified on the live site at 1440px wide
   (sidebar at 0,0; content starts at the header, beside the sidebar).
 
+### Public interactive demo (2026-10-08)
+
+**https://nemt-hub-dev.web.app/demo** — no sign-in, no account, nothing saved.
+Built so prospects (and the owner) can understand the product without a live
+walkthrough. Linked from the login screen ("Try the interactive demo").
+- `src/pages/demo/`: self-contained, all in-memory sample data (no Firebase
+  reads or writes, no real people/trips). `DemoPage.tsx` shell, `data.ts`
+  sample data, `store.ts` reducer, `guides.ts` per-role checklists,
+  `OpsScreens.tsx` / `AdminScreens.tsx` staff screens, `DriverPhone.tsx`.
+- Opens with a 5-step trip lifecycle, then a role picker (Dispatcher,
+  Manager, Admin, Driver; `?role=manager` etc. deep-links), each with a
+  "Take me there" checklist that ticks off as the visitor does things.
+- State is **shared across roles**: assign a trip as Dispatcher and it is on
+  the Driver's phone; complete it as Driver and it is billable as Manager;
+  everything shows in the Admin's audit trail. "Restart demo" resets.
+- Role gating mirrors the real app (menu built from `navItemsFor`, locked
+  items shown greyed; only Admin changes roles/deletes; audit-worthy actions
+  log exactly as in the real app).
+- Verified in-browser end to end for all four roles (assign -> driver runs
+  trip to Completed -> billing shows it -> payroll -> users -> audit ->
+  admin delete + role change). Demo is not covered by automated tests.
+
+### Clearing the seeded test data (pending)
+
+`scripts/clear-demo-data.mjs --org-id <id>` (dry run by default; `--confirm`
+deletes) removes an org's drivers, vehicles, trips, inspections, payroll,
+billing periods and locations, and leaves the org, logins and audit log
+alone. Auto mode blocked running the bulk delete itself, so **it has not been
+run**; the user can run it with `--confirm`. The public `/demo` page does not
+depend on any of that data.
+
 ## Open decisions / known gaps
 
 - **Google Maps key referrer list** covers `http://localhost:5173/*` and

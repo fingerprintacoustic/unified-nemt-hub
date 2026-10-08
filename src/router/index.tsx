@@ -5,6 +5,7 @@ import { DriverLayout } from '../components/layout/DriverLayout'
 import { AuditPage } from '../pages/audit/AuditPage'
 import { LoginPage } from '../pages/auth/LoginPage'
 import { DashboardPage } from '../pages/dashboard/DashboardPage'
+import { DemoPage } from '../pages/demo/DemoPage'
 import { DispatchPage } from '../pages/dispatch/DispatchPage'
 import { DriverHomePage } from '../pages/driver/DriverHomePage'
 import { DriverHelpPage } from '../pages/driver/DriverHelpPage'
@@ -26,6 +27,10 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/demo',
+    element: <DemoPage />,
   },
   {
     element: <ProtectedRoute staffApp>{<AppLayout />}</ProtectedRoute>,

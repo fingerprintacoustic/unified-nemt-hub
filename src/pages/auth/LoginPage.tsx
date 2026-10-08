@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Ambulance, ArrowLeft, LogIn } from 'lucide-react'
 import { hasFirebaseConfig } from '../../config/env'
 import { useAuth } from '../../context/AuthContext'
@@ -206,6 +206,13 @@ export function LoginPage() {
             <LogIn className="h-4 w-4" aria-hidden="true" />
           </Button>
         </form>
+        <p className="mt-5 border-t border-slate-100 pt-4 text-center text-sm text-slate-500">
+          Just looking?{' '}
+          <Link to="/demo" className="font-semibold text-blue-600 hover:underline">
+            Try the interactive demo
+          </Link>{' '}
+          &mdash; no sign-in needed.
+        </p>
       </Card>
     </div>
   )
