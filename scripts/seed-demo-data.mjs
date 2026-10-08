@@ -73,15 +73,15 @@ if (!orgSnap.exists) {
 
 // --- organization + existing test logins get realistic names -----------------
 await db.collection('organizations').doc(ORG).update({
-  name: 'Riverside Medical Transport (Demo)',
+  name: 'Demo Organization',
   updatedAt: FieldValue.serverTimestamp(),
 })
 
 const renames = {
-  Py86U5SSX7WMtuSUOw41xusHueg1: ['Alex', 'Morgan'],
-  WFCgFpuRC3YiolfHrpQiCPapYXx1: ['Priya', 'Shah'],
-  oRp3G3dVVUWiuFFjzuTLgHIDqRY2: ['Dana', 'Reyes'],
-  HnkGKbr1OTMWMZI1X4aQkUWipDy1: ['Marcus', 'Bell'],
+  Py86U5SSX7WMtuSUOw41xusHueg1: ['Demo', 'Admin'],
+  WFCgFpuRC3YiolfHrpQiCPapYXx1: ['Demo', 'Manager'],
+  oRp3G3dVVUWiuFFjzuTLgHIDqRY2: ['Demo', 'Dispatcher'],
+  HnkGKbr1OTMWMZI1X4aQkUWipDy1: ['Demo', 'Driver'],
 }
 for (const [uid, [firstName, lastName]] of Object.entries(renames)) {
   const ref = db.collection('users').doc(uid)
@@ -123,7 +123,7 @@ const TERRENCE = await ensureDriverLogin('fingerprintacoustic+demo-terrence@gmai
 // --- driver roster ------------------------------------------------------------
 const in2y = ts(24 * 365 * 2)
 const drivers = [
-  ['demo-driver-marcus', 'Marcus', 'Bell', '555-0142', 'B4410927', MARCUS, 'ACTIVE'],
+  ['demo-driver-marcus', 'Demo', 'Driver', '555-0142', 'B4410927', MARCUS, 'ACTIVE'],
   ['demo-driver-sofia', 'Sofia', 'Alvarez', '555-0177', 'A7720331', SOFIA, 'ACTIVE'],
   ['demo-driver-terrence', 'Terrence', 'Cole', '555-0119', 'C1093846', TERRENCE, 'ACTIVE'],
   ['demo-driver-helen', 'Helen', 'Park', '555-0164', 'P5528810', null, 'ON_LEAVE'],
