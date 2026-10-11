@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, NavLink } from 'react-router-dom'
-import { Ambulance, LogOut, X } from 'lucide-react'
+import { LogOut, X } from 'lucide-react'
 import { isStaffRole } from '../../config/roles'
 import { navItemsFor } from '../../config/navigation'
 import { useAuth } from '../../context/AuthContext'
 import { formatRole, initialsFrom } from '../../lib/format'
+import { OrgMark } from './OrgMark'
 
 interface SidebarProps {
   open: boolean
@@ -12,7 +13,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ open, onClose }: SidebarProps) {
-  const { user, userRecord, logout } = useAuth()
+  const { user, userRecord, organization, logout } = useAuth()
   const navigate = useNavigate()
   const [signingOut, setSigningOut] = useState(false)
 
@@ -52,11 +53,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         <div className="flex h-16 items-center justify-between px-5">
           <NavLink to="/dashboard" className="flex items-center gap-2.5" onClick={onClose}>
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
-              <Ambulance className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <span className="text-sm font-bold leading-tight text-white">
-              NEMT Hub
+            <OrgMark size="h-9 w-9" iconSize="h-5 w-5" />
+            <span className="min-w-0 text-sm font-bold leading-tight text-white">
+              <span className="block truncate">{organization?.name ?? 'NEMT Hub'}</span>
               <span className="block text-[10px] font-medium uppercase tracking-wider text-slate-400">
                 Operations
               </span>

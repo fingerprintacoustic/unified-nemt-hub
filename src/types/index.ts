@@ -199,6 +199,8 @@ export interface OrganizationRecord {
   email?: string
   address?: Address
   timezone: string
+  /** Small logo as a data: URL. Set by an operator script (set-org-branding.mjs); clients cannot write organization docs. */
+  logoDataUrl?: string
   createdAt: Timestamp
   updatedAt: Timestamp
 }

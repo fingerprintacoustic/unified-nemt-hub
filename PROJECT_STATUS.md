@@ -532,6 +532,26 @@ walkthrough. Linked from the login screen ("Try the interactive demo").
 - `scripts/create-user.mjs` is now only needed to bootstrap a brand-new
   organization's first admin (with `seed-organization.mjs`) or as a fallback.
 
+### Multiple demo clients: per-org name and logo (2026-10-11)
+
+- Decision (owner): option 1 -- one shared site, one organization per prospect;
+  name and logo are the only personalization for now. Isolation between
+  organizations is the existing rules model (everything keyed by
+  organizationId); no rules change.
+- `OrganizationRecord.logoDataUrl` (small data: URL, max 200 KB, set by
+  script because clients cannot write organization docs). `OrgMark` +
+  Sidebar + DriverLayout show the org's logo (white tile) and name, falling
+  back to the default icon and "NEMT Hub" / "NEMT Driver". The sign-in page
+  stays generic (no org is known before sign-in).
+- `scripts/set-org-branding.mjs` (--list, --org-id, --name, --logo,
+  --remove-logo, --dry-run) and a prospect runbook in `scripts/README.md`
+  (seed-organization -> set-org-branding -> client Admin uses Invite user).
+- Verified live: temporary name/logo on the Demo Organization showed in the
+  Admin sidebar and the Driver app header; then restored to "Demo Organization"
+  with no logo.
+- Not built: in-app logo upload by an Admin (would need a rules or function
+  change), org deletion, per-client colors, branded sign-in page.
+
 ### Install-on-phone guide + proper PWA icons (2026-10-11)
 
 - `/demo` now has section **3. Put the driver app on your phone**: copyable address

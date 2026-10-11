@@ -192,3 +192,20 @@ change an existing user's role/status from the Users admin screen instead.
   a test account via the Admin SDK (prompts interactively, hidden input) —
   useful right after `seed-organization.mjs`/`create-user.mjs`, which leave
   new accounts with no password: `node set-user-password.mjs --uid <uid>`.
+
+## Setting up a prospect's own demo organization
+
+Each client gets its own organization on the same site; they can only see
+their own data. About five minutes:
+
+1. `node seed-organization.mjs --org-name "Acme Medical Transport" --org-timezone "America/New_York" --admin-email <their email> --admin-first-name <..> --admin-last-name <..>`
+   (prints a password-setup link for their first Admin; send it to them).
+2. `node set-org-branding.mjs --list` to find the org id, then
+   `node set-org-branding.mjs --org-id <id> --logo ./their-logo.png` (PNG, JPG,
+   WebP or SVG, max 200 KB). `--name` renames; `--remove-logo` undoes it;
+   `--dry-run` previews. The name and logo show in the sidebar and the driver
+   app header.
+3. They sign in as Admin and use **Invite user** to add their own people.
+
+Tell prospects to use made-up passengers only (the BAA/HIPAA decision is still
+open). Organizations are not deleted by any script yet.

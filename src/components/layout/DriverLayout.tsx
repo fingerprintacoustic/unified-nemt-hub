@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Ambulance, Camera, ClipboardCheck, HelpCircle, LogOut } from 'lucide-react'
+import { Camera, ClipboardCheck, HelpCircle, LogOut } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { formatRole, initialsFrom } from '../../lib/format'
+import { OrgMark } from './OrgMark'
 
 /**
  * Mobile-first driver PWA shell — bottom tab navigation, persistent trip status
  * placeholders,and large touch targets..
  */
 export function DriverLayout() {
-  const { user, userRecord, logout } = useAuth()
+  const { user, userRecord, organization, logout } = useAuth()
   const navigate = useNavigate()
   const [signingOut, setSigningOut] = useState(false)
   const displayName =
@@ -40,11 +41,9 @@ export function DriverLayout() {
       {/* Persistent status bar — placeholder for live trip state in a later phase.. */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-slate-200 bg-slate-900 px-4 text-white">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-            <Ambulance className="h-4.5 w-4.5" aria-hidden="true" />
-          </span>
-          <div>
-            <p className="text-sm font-bold leading-tight">NEMT Driver</p>
+          <OrgMark size="h-8 w-8" iconSize="h-4.5 w-4.5" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold leading-tight">{organization?.name ?? 'NEMT Driver'}</p>
             <p className="text-[10px] uppercase tracking-wider text-slate-400">{formatRole(userRecord?.role ?? 'DRIVER')}</p>
           </div>
         </div>
