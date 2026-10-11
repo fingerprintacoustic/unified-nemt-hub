@@ -28,6 +28,7 @@ type Action =
   | { type: 'exportPayroll' }
   | { type: 'setUserRole'; id: string; role: UserRole }
   | { type: 'toggleUser'; id: string }
+  | { type: 'inviteUser'; name: string; role: UserRole }
   | { type: 'deleteVehicle'; id: string }
 
 let counter = 100
@@ -186,6 +187,18 @@ function reducer(state: State, action: Action): State {
           audit: withAudit(state, 'user.role_changed', `users / ${action.id}`, `role: ${action.role}`),
         },
       }
+    case 'inviteUser': {
+      const id = `u${counter++}`
+      return {
+        ...state,
+        done: mark('invitedUser'),
+        data: {
+          ...d,
+          users: [...d.users, { id, name: action.name, role: action.role, active: true }],
+          audit: withAudit(state, 'user.invited', `users / ${id}`, `role: ${action.role}`),
+        },
+      }
+    }
     case 'toggleUser': {
       const target = d.users.find((u) => u.id === action.id)
       return {

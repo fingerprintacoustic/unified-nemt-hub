@@ -51,10 +51,9 @@ unconfigured.
   rules in-browser (role change + deactivate/reactivate), not just the Admin
   SDK.
 - `scripts/create-user.mjs` — adds a user to an **existing** org (Auth user +
-  `users/{uid}` doc); the Users screen shows the exact command, pre-filled
-  with the org id. Creating a brand-new user still needs this script (or
-  `seed-organization.mjs` for a new org) because a browser can't create a
-  Firebase Auth account for someone else.
+  `users/{uid}` doc). Superseded for day-to-day use by the in-app Invite user
+  feature (2026-10-11); still used to bootstrap a new org's first admin
+  (with `seed-organization.mjs`) or as a fallback.
 
 ### Phase 3 — Vehicles / drivers: DONE
 
@@ -497,6 +496,42 @@ walkthrough. Linked from the login screen ("Try the interactive demo").
   Compliance Readiness Brief (now v3, says drivers are deliberately exempt and rely on
   the device lock screen) and the pitch deck security slide (v5).
 
+### In-app "Invite user" (2026-10-11)
+
+- Replaces the script-only way of adding people. Rule (approved by the owner):
+  **Admin can invite any role; Manager can invite Dispatcher and Driver only;
+  Dispatcher/Driver cannot invite.**
+- `functions/` (new, Firebase Cloud Functions v2, Node 22, us-central1; needs
+  Blaze billing, already linked; build-image cleanup policy set to 1 day):
+  callable `inviteUser` (`functions/index.js`) with the pure rules in
+  `functions/invite.js` (6 `node --test` tests, all passing; run `npm test` in
+  `functions/`). It checks the caller is signed in and ACTIVE, validates input,
+  enforces the role rule, rejects duplicate emails, creates the Auth user
+  (no password), and in one batch writes `users/{uid}`, a `drivers` roster
+  record for DRIVER invites (phone, license number/state/expiry required) and
+  a server-written `auditLogs` entry (`user.invited`). The organization always
+  comes from the caller, never from the request. If the writes fail, the Auth
+  user is deleted again.
+- No `firestore.rules` change (the function uses the Admin SDK).
+- Frontend: `src/services/invites.ts`, `src/pages/users/InviteUserModal.tsx`,
+  `UsersPage.tsx` ("Invite user" button for Manager+, "Password email" resend
+  button per row). The invitee chooses their own password through Firebase's
+  standard password-reset email (`sendPasswordReset`); nobody else sees it.
+- Verified live with real role accounts: Admin created all four roles on the
+  server; Manager was refused for Admin/Manager; Dispatcher and Driver refused
+  for everything; duplicate email refused; the Manager form in the browser
+  offered only Dispatcher/Driver and created both (driver got a linked roster
+  record). Test invitees were deleted afterwards.
+- **Not yet tested:** the invitee's full path (email arrives -> set password ->
+  sign in) -- it relies on Firebase's standard reset email, and spam
+  folders are a possibility; and Admin inviting all four roles through the UI.
+- Six `user.invited` entries from these tests remain in `auditLogs`
+  (immutable by design).
+- `/demo` simulates it (Manager: Dispatcher/Driver; Admin: any role; adds a
+  row and an audit entry, sends nothing). Staff Help text updated.
+- `scripts/create-user.mjs` is now only needed to bootstrap a brand-new
+  organization's first admin (with `seed-organization.mjs`) or as a fallback.
+
 ### Install-on-phone guide + proper PWA icons (2026-10-11)
 
 - `/demo` now has section **3. Put the driver app on your phone**: copyable address
@@ -536,12 +571,10 @@ depend on any of that data.
   as a made-up address. `scripts/set-user-password.mjs` remains as a
   dev-only helper for setting a known password on a test account directly
   (bypassing email) when that's more convenient for testing.
-- No in-app "invite a new user by email" flow yet — `scripts/create-user.mjs`
-  (an Admin SDK script run by an operator) still prints a reset link to
-  deliver manually, rather than the app itself sending an invite. Building
-  a real in-app invite would need a Cloud Function (browsers can't create
-  Auth accounts for someone else) — a bigger, separate feature, not
-  bundled into this session's password-reset fix.
+- **In-app invite shipped (2026-10-11)** -- see "In-app Invite user" above.
+  This replaces the old note that only `scripts/create-user.mjs` could add
+  users. Remaining gap: the invitee email path has not been exercised end to
+  end, and invite emails use Firebase's default sender/template.
 - `firestore.rules` now compiles with **0 warnings** (was 1, the
   `auditLogs` `diff(self)`/`.keys()` bug — fixed and verified this
   session, see Phase 11 above).

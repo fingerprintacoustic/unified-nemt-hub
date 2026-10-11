@@ -1,3 +1,4 @@
+import type { UserRole } from '../../types'
 import type { DemoData } from './data'
 
 export const selectClass =
@@ -24,4 +25,11 @@ export function downloadCsv(filename: string, rows: string[][]): void {
   a.click()
   a.remove()
   URL.revokeObjectURL(url)
+}
+
+/** Same rule as the real app (Admin: any role; Manager: Dispatcher and Driver). */
+export function invitableRoles(role: UserRole): UserRole[] {
+  if (role === 'ADMIN') return ['ADMIN', 'MANAGER', 'DISPATCHER', 'DRIVER']
+  if (role === 'MANAGER') return ['DISPATCHER', 'DRIVER']
+  return []
 }

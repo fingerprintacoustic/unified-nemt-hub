@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ShieldCheck, UserCog, UserX } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Mail, ShieldCheck, UserCog, UserPlus, UserX } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -10,8 +10,11 @@ import { useAuth } from '../../context/AuthContext'
 import { toUserMessage } from '../../lib/errors'
 import { formatRole } from '../../lib/format'
 import { writeAuditLog } from '../../services/audit'
+import { sendPasswordReset } from '../../services/auth'
+import { invitableRoles } from '../../services/invites'
 import { observeOrgUsers, setUserStatus, updateUserRole } from '../../services/users'
 import type { UserRecord, UserRole, UserStatus } from '../../types'
+import { InviteUserModal } from './InviteUserModal'
 
 const ROLE_OPTIONS: UserRole[] = ['ADMIN', 'MANAGER', 'DISPATCHER', 'DRIVER']
 
@@ -33,6 +36,9 @@ export function UsersPage() {
   // Per-row in-flight uid, so only the row being changed shows a spinner.
   const [pendingUid, setPendingUid] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const inviteRoles = invitableRoles(userRecord?.role)
 
   useEffect(() => {
     if (!organizationId) return
@@ -47,10 +53,19 @@ export function UsersPage() {
     return unsubscribe
   }, [organizationId])
 
-  const seedCommand = useMemo(() => {
-    if (!organizationId) return ''
-    return `node create-user.mjs --org-id ${organizationId} --email "new.user@example.com" --first-name "First" --last-name "Last" --role DISPATCHER`
-  }, [organizationId])
+  async function handleResend(row: UserRecord) {
+    setActionError(null)
+    setNotice(null)
+    setPendingUid(row.uid)
+    try {
+      await sendPasswordReset(row.email)
+      setNotice(`Password email sent to ${row.email}.`)
+    } catch {
+      setActionError('Could not send that email. Please try again.')
+    } finally {
+      setPendingUid(null)
+    }
+  }
 
   async function handleRoleChange(uid: string, role: UserRole) {
     setActionError(null)
@@ -103,9 +118,18 @@ export function UsersPage() {
     <>
       <PageHeader
         title="Users"
-        description="Manage staff and driver accounts in your organization: roles and active status."
+        description="Manage staff and driver accounts in your organization: invite people, roles and active status."
+        actions={
+          inviteRoles.length > 0 ? (
+            <Button onClick={() => setInviteOpen(true)}>
+              <UserPlus className="h-4 w-4" aria-hidden="true" />
+              Invite user
+            </Button>
+          ) : undefined
+        }
       />
 
+      {notice && <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{notice}</p>}
       {actionError && (
         <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{actionError}</p>
       )}
@@ -170,6 +194,13 @@ export function UsersPage() {
                         </td>
                         <td className="py-3 pr-4 text-right">
                           {canChangeStatus && !isSelf ? (
+                            <div className="flex items-center justify-end gap-2">
+                            {row.status === 'ACTIVE' && (
+                              <Button variant="ghost" size="sm" disabled={isPending} onClick={() => handleResend(row)} title="Email them a link to set or reset their password">
+                                <Mail className="h-4 w-4" aria-hidden="true" />
+                                Password email
+                              </Button>
+                            )}
                             <Button
                               variant={row.status === 'ACTIVE' ? 'danger' : 'secondary'}
                               size="sm"
@@ -188,6 +219,7 @@ export function UsersPage() {
                                 </>
                               )}
                             </Button>
+                            </div>
                           ) : (
                             <span className="text-xs text-slate-400">—</span>
                           )}
@@ -202,25 +234,7 @@ export function UsersPage() {
         </Card>
       </div>
 
-      <div className="mt-6">
-        <Card
-          title="Add a user"
-          subtitle="New accounts are provisioned with a script — the browser can't create a Firebase Auth account for someone else."
-        >
-          <p className="text-sm text-slate-500">
-            Run this from <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">scripts/</code> (adjust
-            email, name, and role):
-          </p>
-          <pre className="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100">
-            <code>{seedCommand}</code>
-          </pre>
-          <p className="mt-3 text-xs text-slate-400">
-            It creates the Firebase Auth account (or reuses one with a matching email) and the matching{' '}
-            <code className="rounded bg-slate-100 px-1 py-0.5">users/{'{uid}'}</code> document in this
-            organization, then prints a password-setup link for the new user.
-          </p>
-        </Card>
-      </div>
+      <InviteUserModal open={inviteOpen} onClose={() => setInviteOpen(false)} roles={inviteRoles} />
     </>
   )
 }

@@ -126,7 +126,7 @@ firestore.indexes.json, firebase.json   Firebase infrastructure config
    - `MANAGER` — payroll, billing, reports
    - `DISPATCHER` — dispatch, drivers, vehicles, trips, inspections
    - `DRIVER` — driver PWA (`/driver`): own trips + inspections
-- Frontend gates in `ProtectedRoute` (`minRole`, `staffApp`, `driverApp`) and `navItemsFor`; server-side rules in `firestore.rules`/`storage.rules` are authoritative. Administer roles via the Users screen (`/users`), or seed a user doc manually with `scripts/create-user.mjs`.
+- Frontend gates in `ProtectedRoute` (`minRole`, `staffApp`, `driverApp`) and `navItemsFor`; server-side rules in `firestore.rules`/`storage.rules` are authoritative. Administer roles and invite new users from the Users screen (`/users`; backed by the `inviteUser` Cloud Function in `functions/`: Admin can invite any role, Manager only Dispatcher and Driver). `scripts/create-user.mjs` remains for bootstrapping a new organization.
 - Self-service password reset is available from the sign-in screen ("Forgot password?"), sent via Firebase Auth's own email delivery — no third-party mail vendor required.
 
 ## Current development phase

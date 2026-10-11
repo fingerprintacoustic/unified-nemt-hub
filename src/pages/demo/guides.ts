@@ -99,6 +99,12 @@ export const GUIDES: RoleGuide[] = [
         page: 'reports',
       },
       {
+        key: 'invitedUser',
+        title: 'Invite a new team member',
+        body: 'Press Invite user and add a Dispatcher or Driver. In the real app they are emailed a link to choose their own password, so you never handle it. Managers cannot invite Managers or Admins.',
+        page: 'users',
+      },
+      {
         key: 'toggledUser',
         title: 'Switch off a login',
         body: 'Press Deactivate next to Terrence Cole, as you would when someone leaves. You can switch him back on. Every change is recorded in the audit trail.',
@@ -123,6 +129,12 @@ export const GUIDES: RoleGuide[] = [
         title: 'Read the audit trail',
         body: 'A permanent log of who did what and when. Actions you took as Dispatcher or Manager are in it. Entries can never be edited or deleted.',
         page: 'audit',
+      },
+      {
+        key: 'invitedUser',
+        title: 'Invite any role',
+        body: 'Press Invite user. An Admin can invite any role, including Managers and other Admins. The invite is logged in the audit trail.',
+        page: 'users',
       },
       {
         key: 'changedRole',

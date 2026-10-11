@@ -80,9 +80,9 @@ export function HelpPage() {
       body: (
         <>
           <p>
-            Add a driver on the <b>Drivers</b> page. To let them use the mobile app, first create their
-            login on the <b>Users</b> page with the Driver role, then link it from the driver&rsquo;s
-            record &mdash; only Driver-role logins show up in that list.
+            To add a driver who will use the mobile app, invite them on the <b>Users</b> page with the
+            Driver role &mdash; that creates their login and their roster record together. The{' '}
+            <b>Drivers</b> page can also add a roster record by hand and link it to a Driver-role login.
           </p>
           <p>
             On the <b>Vehicles</b> page, <b>Update status</b> records a vehicle&rsquo;s last known
@@ -151,9 +151,12 @@ export function HelpPage() {
       minRole: 'MANAGER',
       body: (
         <p>
-          Change a user&rsquo;s role or activate/deactivate their account here. Creating a brand-new
-          login still needs your Fingerprint Acoustic contact to run a one-time setup step &mdash; a
-          browser can&rsquo;t create someone else&rsquo;s account on its own.
+          Press <b>Invite user</b> to add someone: enter their name, email, and role, and they are emailed
+          a link to choose their own password &mdash; you never see or set it. Managers can invite
+          Dispatchers and Drivers; only an Admin can invite Managers or Admins. A Driver invite also adds
+          them to the roster. If the email doesn&rsquo;t arrive, use <b>Password email</b> on their row
+          to send it again. You can also change a user&rsquo;s role (Admin only) or activate/deactivate
+          their account here.
         </p>
       ),
     },

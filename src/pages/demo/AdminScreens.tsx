@@ -1,4 +1,5 @@
-import { BarChart3, Download, Plug, RotateCcw, ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
+import { BarChart3, Download, Plug, RotateCcw, ShieldCheck, UserPlus } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -8,7 +9,8 @@ import { hasMinimumRole } from '../../config/roles'
 import { formatDateTime, formatRole } from '../../lib/format'
 import type { UserRole } from '../../types'
 import { PERSONAS, STATUS_TONE, money, type DBillingLine } from './data'
-import { downloadCsv, label, selectClass } from './helpers'
+import { DemoInviteModal } from './DemoInviteModal'
+import { downloadCsv, invitableRoles, label, selectClass } from './helpers'
 import { billableTrips, useDemo } from './store'
 import { Table } from './Table'
 
@@ -220,10 +222,24 @@ export function UsersScreen() {
   const me = PERSONAS[state.role].name
   const isAdmin = state.role === 'ADMIN'
   const roles: UserRole[] = ['ADMIN', 'MANAGER', 'DISPATCHER', 'DRIVER']
+  const inviteRoles = invitableRoles(state.role)
+  const [inviteOpen, setInviteOpen] = useState(false)
 
   return (
     <>
-      <PageHeader title="Users" description="Who can sign in, and what they can do." />
+      <PageHeader
+        title="Users"
+        description="Who can sign in, and what they can do."
+        actions={
+          inviteRoles.length > 0 ? (
+            <Button onClick={() => setInviteOpen(true)}>
+              <UserPlus className="h-4 w-4" aria-hidden="true" />
+              Invite user
+            </Button>
+          ) : undefined
+        }
+      />
+      {inviteRoles.length > 0 && <DemoInviteModal key={state.role} open={inviteOpen} onClose={() => setInviteOpen(false)} roles={inviteRoles} />}
       <div className="mt-5">
         <Card title="Team" subtitle={`${users.length} logins`}>
           <Table head={['Name', 'Role', 'Status', 'Actions']}>
@@ -278,7 +294,9 @@ export function UsersScreen() {
             })}
           </Table>
           <p className="mt-3 text-xs text-slate-400">
-            {isAdmin ? 'You can change roles. You cannot change your own.' : 'Managers can switch logins on or off. Only an Admin can change roles.'}
+            {isAdmin
+              ? 'You can invite any role and change roles. You cannot change your own.'
+              : 'Managers can invite Dispatchers and Drivers and switch logins on or off. Only an Admin can invite Managers or Admins, or change roles.'}
           </p>
         </Card>
       </div>
@@ -363,7 +381,7 @@ export function HelpScreen() {
     ['Drivers and vehicles', 'Keep the roster and fleet current. Update a vehicle’s last known status by hand.', 'DISPATCHER'],
     ['Inspections', 'Review what drivers submit and approve or flag it.', 'DISPATCHER'],
     ['Payroll and billing', 'Enter pay, approve it, finalize billing, export CSVs.', 'MANAGER'],
-    ['Reports and users', 'Live reports; switch logins on or off.', 'MANAGER'],
+    ['Reports and users', 'Live reports; invite Dispatchers and Drivers by email; switch logins on or off.', 'MANAGER'],
     ['Audit trail', 'A permanent record of who did what and when.', 'ADMIN'],
   ]
   return (
