@@ -493,9 +493,9 @@ walkthrough. Linked from the login screen ("Try the interactive demo").
   temporary 5-second timeout: a real driver login stayed signed in after 9s
   idle, a real dispatcher login was signed out with the notice. Timeout
   restored to 20 minutes before deploy.
-- Wording updated to "office staff" in the demo Settings screen. The
-  Compliance Readiness Brief and the pitch deck security slide were updated too
-  (see below if not yet done).
+- Wording updated to "office staff" in the demo Settings screen, the
+  Compliance Readiness Brief (now v3, says drivers are deliberately exempt and rely on
+  the device lock screen) and the pitch deck security slide (v5).
 
 ### Install-on-phone guide + proper PWA icons (2026-10-11)
 
