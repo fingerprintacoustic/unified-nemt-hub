@@ -347,7 +347,7 @@ export function SettingsScreen() {
       <div className="mt-5">
         <Card>
           <p className="text-sm text-slate-600">
-            Sign-in security is already enforced: passwords of 12+ characters, automatic sign-out after 20 minutes idle, and a permanent audit trail.
+            Sign-in security is already enforced: passwords of 12+ characters, automatic sign-out after 20 minutes idle for office staff (drivers stay signed in during a shift), and a permanent audit trail.
           </p>
         </Card>
       </div>

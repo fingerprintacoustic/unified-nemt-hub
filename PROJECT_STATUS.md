@@ -485,6 +485,18 @@ walkthrough. Linked from the login screen ("Try the interactive demo").
   trip to Completed -> billing shows it -> payroll -> users -> audit ->
   admin delete + role change). Demo is not covered by automated tests.
 
+### Idle timeout no longer applies to drivers (2026-10-11)
+
+- `AuthContext`: the 20-minute idle auto-logout now skips accounts with the DRIVER
+  role (drivers run trips on a phone, often driving with the screen untouched).
+  Office staff (Admin/Manager/Dispatcher) are unchanged. Verified with a
+  temporary 5-second timeout: a real driver login stayed signed in after 9s
+  idle, a real dispatcher login was signed out with the notice. Timeout
+  restored to 20 minutes before deploy.
+- Wording updated to "office staff" in the demo Settings screen. The
+  Compliance Readiness Brief and the pitch deck security slide were updated too
+  (see below if not yet done).
+
 ### Install-on-phone guide + proper PWA icons (2026-10-11)
 
 - `/demo` now has section **3. Put the driver app on your phone**: copyable address

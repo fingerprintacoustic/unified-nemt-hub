@@ -114,9 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Auto sign-out after IDLE_TIMEOUT_MS of no mouse/keyboard/scroll/touch
   // activity -- see IDLE_TIMEOUT_MS's own comment. Only active while
-  // actually signed in.
+  // actually signed in. Drivers are exempt: they run trips on a phone, often
+  // driving with the screen untouched, and an idle sign-out mid-shift would
+  // log them out of the app they rely on.
+  const isDriver = userRecord?.role === 'DRIVER'
   useEffect(() => {
-    if (status !== 'authenticated') return
+    if (status !== 'authenticated' || isDriver) return
 
     let timer: ReturnType<typeof setTimeout>
     const resetTimer = () => {
@@ -133,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(timer)
       for (const event of ACTIVITY_EVENTS) window.removeEventListener(event, resetTimer)
     }
-  }, [status, logoutUser])
+  }, [status, isDriver, logoutUser])
 
   const value = useMemo<AuthContextValue>(
     () => ({
