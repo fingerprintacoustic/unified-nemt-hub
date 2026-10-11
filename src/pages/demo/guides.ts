@@ -7,6 +7,8 @@ export interface GuideStep {
   body: string
   /** Screen to open when the user presses "Take me there". */
   page?: string
+  /** Element id to scroll to instead ("Show me how"). */
+  anchor?: string
 }
 
 export interface RoleGuide {
@@ -185,6 +187,11 @@ export const GUIDES: RoleGuide[] = [
         title: 'Open Help',
         body: 'Short instructions built into the app.',
         page: 'help',
+      },
+      {
+        title: 'Put it on your own phone',
+        body: 'Drivers do not download anything from an app store: they add the app to the home screen. The two-minute guide is further down this page.',
+        anchor: 'install',
       },
     ],
   },

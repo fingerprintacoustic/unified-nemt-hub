@@ -4,6 +4,7 @@ import { Check, Lock, RotateCcw, X } from 'lucide-react'
 import { MAIN_NAV, navItemsFor } from '../../config/navigation'
 import type { UserRole } from '../../types'
 import { DriverPhone } from './DriverPhone'
+import { InstallGuide } from './InstallGuide'
 import { PERSONAS } from './data'
 import { FLOW, GUIDES } from './guides'
 import { SCREENS } from './screensMap'
@@ -155,6 +156,15 @@ function DemoShell() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-800">{s.title}</p>
                       <p className="mt-0.5 text-xs leading-5 text-slate-600">{s.body}</p>
+                      {s.anchor && (
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById(s.anchor!)?.scrollIntoView({ behavior: 'smooth' })}
+                          className="mt-1.5 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                        >
+                          Show me how
+                        </button>
+                      )}
                       {s.page && !done && (
                         <button
                           type="button"
@@ -190,6 +200,9 @@ function DemoShell() {
             )}
           </section>
         </div>
+
+        <h2 className="mt-12 text-lg font-bold">3. Put the driver app on your phone</h2>
+        <InstallGuide />
 
         <p className="mt-12 border-t border-slate-200 pt-6 text-center text-sm text-slate-500">
           Fingerprint Acoustic · Unified NEMT Operations Hub. Everything in this demo is made-up sample data.

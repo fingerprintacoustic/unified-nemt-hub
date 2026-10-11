@@ -485,6 +485,22 @@ walkthrough. Linked from the login screen ("Try the interactive demo").
   trip to Completed -> billing shows it -> payroll -> users -> audit ->
   admin delete + role change). Demo is not covered by automated tests.
 
+### Install-on-phone guide + proper PWA icons (2026-10-11)
+
+- `/demo` now has section **3. Put the driver app on your phone**: copyable address
+  (`<origin>/driver`), step-by-step iPhone (Safari: Share, Add to Home Screen)
+  and Android (Chrome: menu, Install app / Add to Home screen), plus a
+  "Show me how" step in the Driver checklist (`src/pages/demo/InstallGuide.tsx`).
+- Real PWA install fixes: the manifest only had SVG icons. Added PNG icons
+  (`public/icons/icon-192.png`, `icon-512.png`, `public/apple-touch-icon.png`, rendered from the
+  existing SVGs), pointed the manifest at them, and added iOS meta tags in
+  `index.html` (solid status bar, so the driver header is not under the notch).
+- **Not tested on a real phone** (no device here): install steps follow standard
+  iOS/Android behavior; check once on your own phone.
+- **Flag for the owner:** the 20-minute idle auto-logout also applies to the
+  installed driver app, so a driver who does not touch the screen for 20 minutes
+  while driving is signed out. Decide whether drivers need a longer timeout.
+
 ### Seeded test data cleared (2026-10-08)
 
 `scripts/clear-demo-data.mjs --org-id <id>` (dry run by default; `--confirm`
